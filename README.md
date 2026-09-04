@@ -6,6 +6,7 @@ A lightweight, high-performance tool and Python library to **sideload, convert, 
 
 ## Key Features
 
+- 🖥️ **Modern Desktop GUI**: Beautiful dark-mode dashboard with interactive Leaflet GPS map, turn-by-turn waypoint cues, dynamic elevation profiles with hover inspection, drag-and-drop ingestion, and on-device course manager.
 - 🔄 **Built-in Pure Python FIT Course Encoder**: Converts any standard `.gpx` track or route into binary Garmin `.fit` course format with timestamps, elevation profiles, distance calculations, and turn-by-turn/waypoint cues. Zero heavy dependencies required.
 - 🔌 **Auto-Discovery on Linux**: Automatically detects your connected Garmin watch across USB Mass Storage (`/media/*`, `/mnt/*`) and GNOME/GVFS MTP mounts (`/run/user/$UID/gvfs/mtp:*`).
 - ⚡ **Direct Sideloading**: Drops converted `.fit` or `.gpx` files directly into `/GARMIN/NEWFILES/`, allowing the Garmin OS to ingest and process the course upon unplugging.
@@ -26,9 +27,10 @@ A lightweight, high-performance tool and Python library to **sideload, convert, 
 ┌───────────────────────────────┐
 │       garmin-connector        │
 │ ┌───────────────────────────┐ │
+│ │  Interactive Desktop GUI  │ │ ──> Leaflet GPS Map + Elevation Chart
+│ ├───────────────────────────┤ │
 │ │ GPX Parser & FIT Encoder  │ │ ──> Pure-Python FIT Course Encoder
-│ └───────────────────────────┘ │
-│ ┌───────────────────────────┐ │
+│ ├───────────────────────────┤ │
 │ │  MTP / USB Auto-Detector  │ │ ──> Detects /run/user/1000/gvfs/mtp:* or /media/*
 │ └───────────────────────────┘ │
 └──────────────┬────────────────┘
@@ -52,7 +54,7 @@ Clone the repository and install with pip:
 ```bash
 cd ~/Repos/garmin-venu-x1
 
-# Basic installation (CLI + GPX & FIT converter + Watcher)
+# Basic installation
 pip install -e .
 
 # Full installation (including REST API server & test dependencies)
@@ -61,7 +63,19 @@ pip install -e ".[all]"
 
 ---
 
-## Quick Start / CLI Usage
+## Quick Start
+
+### Launch the Desktop GUI Dashboard
+Launch the desktop GUI in an app window (or your browser):
+```bash
+garmin-connector gui
+# or:
+python3 -m garmin_connector.cli gui
+```
+
+---
+
+## CLI Usage
 
 ### 1. Detect Connected Watch
 Scan for USB/MTP mounted Garmin watches:

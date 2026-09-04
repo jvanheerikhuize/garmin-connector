@@ -239,6 +239,12 @@ def cmd_serve(args):
     uvicorn.run(app, host=args.host, port=args.port)
 
 
+def cmd_gui(args):
+    """Launches the interactive desktop GUI dashboard."""
+    from .gui.launcher import launch_gui
+    launch_gui(host=args.host, port=args.port, open_browser=not args.no_browser)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="garmin-connector",
@@ -247,6 +253,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mount", "-m", help="Explicit Garmin mount point or GARMIN directory path")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # gui
+    p_gui = subparsers.add_parser("gui", help="Launch interactive desktop GUI dashboard")
+    p_gui.add_argument("--host", default="127.0.0.1", help="Host interface (default: 127.0.0.1)")
+    p_gui.add_argument("--port", "-p", type=int, default=8080, help="Port (default: 8080)")
+    p_gui.add_argument("--no-browser", action="store_true", help="Do not auto-open browser / app window")
+    p_gui.set_defaults(func=cmd_gui)
 
     # detect
     p_detect = subparsers.add_parser("detect", help="Scan and show connected Garmin watch details")

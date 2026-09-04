@@ -177,3 +177,28 @@ class GarminDeviceDetector:
         """Returns the primary connected Garmin device, if found."""
         devices = cls.detect_devices(custom_path)
         return devices[0] if devices else None
+
+    @classmethod
+    def check_raw_usb(cls) -> dict:
+        """Checks sysfs for physically attached Garmin USB devices even if not mounted as a filesystem."""
+        try:
+            sysfs_usb = Path("/sys/bus/usb/devices")
+            if sysfs_usb.exists():
+                for p in sysfs_usb.glob("*"):
+                    vendor_f = p / "idVendor"
+                    product_f = p / "idProduct"
+                    if vendor_f.exists() and product_f.exists():
+                        vid = vendor_f.read_text().strip().lower()
+                        pid = product_f.read_text().strip().lower()
+                        if vid == "091e":
+                            is_protocol_mode = (pid == "0003")
+                            return {
+                                "detected": True,
+                                "vid": vid,
+                                "pid": pid,
+                                "is_protocol_mode": is_protocol_mode,
+                                "sysfs_path": str(p),
+                            }
+        except Exception:
+            pass
+        return {"detected": False}

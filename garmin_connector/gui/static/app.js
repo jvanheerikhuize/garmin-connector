@@ -168,12 +168,24 @@ async function checkDeviceStatus(showToastOnScan = false) {
     if (data.connected) {
       pill.className = "device-pill connected";
       text.textContent = `● ${data.model_name} Connected`;
+      pill.title = `Connected at ${data.mount_point || 'GARMIN storage'}`;
       if (btnSideload) btnSideload.disabled = false;
       if (showToastOnScan) showToast(`Detected ${data.model_name}`, "success");
+    } else if (data.raw_usb && data.raw_usb.detected) {
+      if (data.raw_usb.is_protocol_mode) {
+        pill.className = "device-pill warning";
+        text.textContent = `◐ Garmin Connected (Garmin Mode)`;
+        pill.title = "Watch is connected in Garmin Protocol mode. Tap 'Yes' on the watch screen or set Settings > System > USB Mode to MTP/Storage to enable file transfers.";
+        if (showToastOnScan) showToast("Garmin watch connected! Tap 'Yes' on watch screen to unlock storage.", "info");
+      } else {
+        pill.className = "device-pill warning";
+        text.textContent = `◐ Garmin USB Detected (Mounting...)`;
+        pill.title = "Device detected on USB bus. Initializing mount...";
+      }
     } else {
       pill.className = "device-pill disconnected";
-      text.textContent = "○ Watch Disconnected (USB/MTP)";
-      if (btnSideload) btnSideload.disabled = false; // still allow attempt with clear error
+      text.textContent = "○ Watch Disconnected (USB)";
+      pill.title = "No Garmin watch detected via USB cable.";
       if (showToastOnScan) showToast("No Garmin watch detected", "info");
     }
   } catch (err) {

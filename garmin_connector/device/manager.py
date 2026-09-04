@@ -76,10 +76,10 @@ class GarminDeviceManager:
                     sport=sport,
                 )
                 dest_file = target_newfiles_dir / tmp_fit_path.name
-                shutil.copy2(tmp_fit_path, dest_file)
+                dest_file.write_bytes(tmp_fit_path.read_bytes())
         elif suffix == ".fit":
             dest_file = target_newfiles_dir / src.name
-            shutil.copy2(src, dest_file)
+            dest_file.write_bytes(src.read_bytes())
         else:
             raise ValueError(f"Unsupported file format '{suffix}'. Supported formats: .gpx, .fit")
 
@@ -145,7 +145,7 @@ class GarminDeviceManager:
 
         for course in self.list_courses():
             dest_file = dest / course.filename
-            shutil.copy2(course.full_path, dest_file)
+            dest_file.write_bytes(course.full_path.read_bytes())
             backed_up.append(dest_file)
 
         return backed_up

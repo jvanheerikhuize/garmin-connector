@@ -552,33 +552,73 @@ input:checked + .slider:before {
   padding: 20px;
 }
 
-/* Elevation Canvas */
+/* Elevation SVG */
 .elevation-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
+  padding: 12px 14px;
 }
 
 .elevation-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
+.elevation-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
 .elevation-info {
   font-family: var(--font-mono);
   color: var(--accent-cyan);
+  font-size: 0.75rem;
 }
 
-#elevationCanvas {
+.elevation-svg-wrapper {
   width: 100%;
-  height: 90px;
+  height: 110px;
+  position: relative;
+  cursor: crosshair;
+}
+
+#elevationSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Leaflet layer control dark theme */
+.leaflet-control-layers {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.8rem !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 8px 12px !important;
+}
+
+.leaflet-control-layers-base label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 /* Courses Table */

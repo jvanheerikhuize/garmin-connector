@@ -207,13 +207,28 @@
             </div>
           </div>
 
-          <!-- Elevation Profile Chart Container -->
+          <!-- Elevation Profile SVG Container -->
           <div class="elevation-container">
             <div class="elevation-header">
-              <span>Elevation Profile</span>
-              <span id="elevationHoverInfo" class="elevation-info">Hover over profile</span>
+              <span class="elevation-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m3 20 7-10 4 5 7-10"/>
+                </svg>
+                Terrain Elevation Profile
+              </span>
+              <span id="elevationHoverInfo" class="elevation-info">Hover profile to inspect</span>
             </div>
-            <canvas id="elevationCanvas" height="90"></canvas>
+            <div class="elevation-svg-wrapper">
+              <svg id="elevationSvg" viewBox="0 0 600 110" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="elevationGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45" />
+                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+                  </linearGradient>
+                </defs>
+                <text x="300" y="55" text-anchor="middle" fill="#64748b" font-size="12" font-family="sans-serif">No route elevation loaded</text>
+              </svg>
+            </div>
           </div>
         </div>
 

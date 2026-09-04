@@ -30,17 +30,43 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- Map Initialization ---
 function initMap() {
   const mapElement = document.getElementById("map");
-  // Default centered in Europe
   state.map = L.map(mapElement, {
     zoomControl: true,
-    attributionControl: false,
+    attributionControl: true,
   }).setView([46.8182, 8.2275], 6);
 
-  // CartoDB Dark Matter tile layer for dark theme
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  // 100% Free basemaps (No API keys required)
+  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    subdomains: "abcd",
-  }).addTo(state.map);
+    attribution: "© OpenStreetMap",
+  });
+
+  const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+    maxZoom: 17,
+    attribution: "© OpenTopoMap",
+  });
+
+  const cyclosm = L.tileLayer("https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: "© CyclOSM",
+  });
+
+  const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "© Esri Imagery",
+  });
+
+  // Default layer
+  osm.addTo(state.map);
+
+  // Layer control switcher
+  const baseLayers = {
+    "🗺️ OpenStreetMap": osm,
+    "⛰️ OpenTopoMap": topo,
+    "🚴 CyclOSM": cyclosm,
+    "🛰️ Satellite": satellite,
+  };
+  L.control.layers(baseLayers, null, { position: "topright" }).addTo(state.map);
 
   state.markersLayer = L.layerGroup().addTo(state.map);
 }
@@ -57,7 +83,7 @@ function initEventListeners() {
   const btnFitMap = document.getElementById("btnFitMap");
   const toggleWatcher = document.getElementById("toggleWatcher");
   const watchPathInput = document.getElementById("watchPath");
-  const elevationCanvas = document.getElementById("elevationCanvas");
+  const elevationSvgWrapper = document.querySelector(".elevation-svg-wrapper");
 
   // Dropzone drag & drop
   ["dragenter", "dragover"].forEach((eventName) => {
@@ -110,14 +136,21 @@ function initEventListeners() {
   });
 
   // Elevation Hover Interaction
-  elevationCanvas.addEventListener("mousemove", handleElevationHover);
-  elevationCanvas.addEventListener("mouseleave", () => {
-    document.getElementById("elevationHoverInfo").textContent = "Hover over profile";
-    if (state.hoverMarker && state.map) {
-      state.map.removeLayer(state.hoverMarker);
-      state.hoverMarker = null;
-    }
-  });
+  if (elevationSvgWrapper) {
+    elevationSvgWrapper.addEventListener("mousemove", handleElevationHover);
+    elevationSvgWrapper.addEventListener("mouseleave", () => {
+      document.getElementById("elevationHoverInfo").textContent = "Hover profile to inspect";
+      const hoverLine = document.getElementById("hoverLine");
+      const hoverDot = document.getElementById("hoverDot");
+      if (hoverLine) hoverLine.style.display = "none";
+      if (hoverDot) hoverDot.style.display = "none";
+
+      if (state.hoverMarker && state.map) {
+        state.map.removeLayer(state.hoverMarker);
+        state.hoverMarker = null;
+      }
+    });
+  }
 }
 
 // --- Device Status Polling ---
@@ -304,90 +337,101 @@ function renderRouteOnMap(coordinates, coursePoints) {
   state.map.fitBounds(state.routeLayer.getBounds(), { padding: [30, 30] });
 }
 
-// --- Elevation Canvas Drawing ---
+// --- Elevation Profile SVG Drawing ---
 function drawElevationProfile(elevations) {
-  const canvas = document.getElementById("elevationCanvas");
-  if (!canvas || !elevations || elevations.length === 0) return;
+  const svg = document.getElementById("elevationSvg");
+  if (!svg) return;
 
-  const ctx = canvas.getContext("2d");
-  const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
+  const validEles = (elevations || []).filter((e) => e.ele !== null && !isNaN(e.ele)).map((e) => e.ele);
+  if (!elevations || elevations.length < 2 || validEles.length === 0) {
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="elevationGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45" />
+          <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+        </linearGradient>
+      </defs>
+      <text x="300" y="55" text-anchor="middle" fill="#64748b" font-size="12" font-family="sans-serif">Flat route or no elevation coordinates in file</text>
+    `;
+    return;
+  }
 
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
+  const width = 600;
+  const height = 110;
+  const padding = { top: 12, right: 15, bottom: 22, left: 42 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
 
-  const width = rect.width;
-  const height = rect.height;
-
-  ctx.clearRect(0, 0, width, height);
-
-  const validEles = elevations.filter((e) => e.ele !== null).map((e) => e.ele);
-  if (validEles.length === 0) return;
-
-  const minEle = Math.min(...validEles);
-  const maxEle = Math.max(...validEles);
-  const eleRange = Math.max(maxEle - minEle, 10);
+  let minEle = Math.min(...validEles);
+  let maxEle = Math.max(...validEles);
+  if (maxEle - minEle < 10) {
+    minEle = Math.max(0, minEle - 10);
+    maxEle = maxEle + 10;
+  }
+  const eleRange = maxEle - minEle;
   const maxDist = elevations[elevations.length - 1].dist || 1;
 
-  // Background grid line
-  ctx.strokeStyle = "rgba(36, 50, 79, 0.4)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, height - 10);
-  ctx.lineTo(width, height - 10);
-  ctx.stroke();
+  const scaleX = (dist) => (padding.left + (dist / maxDist) * chartW).toFixed(1);
+  const scaleY = (ele) => {
+    const val = ele !== null && !isNaN(ele) ? ele : minEle;
+    return (padding.top + chartH - ((val - minEle) / eleRange) * chartH).toFixed(1);
+  };
 
-  // Create gradient
-  const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, "rgba(56, 189, 248, 0.4)");
-  gradient.addColorStop(1, "rgba(56, 189, 248, 0.0)");
+  const pts = elevations.map((p) => `${scaleX(p.dist)},${scaleY(p.ele)}`);
+  const linePath = `M ${pts.join(" L ")}`;
+  const areaPath = `${linePath} L ${padding.left + chartW},${(padding.top + chartH).toFixed(1)} L ${padding.left},${(padding.top + chartH).toFixed(1)} Z`;
 
-  // Path
-  ctx.beginPath();
-  ctx.moveTo(0, height);
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="elevationGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45" />
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+      </linearGradient>
+    </defs>
+    <!-- Axis Grid Lines -->
+    <line x1="${padding.left}" y1="${padding.top + chartH}" x2="${padding.left + chartW}" y2="${padding.top + chartH}" stroke="#24324f" stroke-width="1" />
+    <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartH}" stroke="#24324f" stroke-width="1" />
+    <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left + chartW}" y2="${padding.top}" stroke="rgba(36,50,79,0.4)" stroke-width="1" stroke-dasharray="2 2" />
 
-  elevations.forEach((pt, i) => {
-    const x = (pt.dist / maxDist) * width;
-    const eleVal = pt.ele !== null ? pt.ele : minEle;
-    const y = height - 10 - ((eleVal - minEle) / eleRange) * (height - 25);
+    <!-- Y-axis Labels -->
+    <text x="${padding.left - 6}" y="${padding.top + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${Math.round(maxEle)}m</text>
+    <text x="${padding.left - 6}" y="${padding.top + chartH}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${Math.round(minEle)}m</text>
 
-    if (i === 0) ctx.lineTo(x, y);
-    else ctx.lineTo(x, y);
-  });
+    <!-- X-axis Labels -->
+    <text x="${padding.left}" y="${height - 6}" text-anchor="start" fill="#94a3b8" font-size="10" font-family="monospace">0 km</text>
+    <text x="${padding.left + chartW * 0.5}" y="${height - 6}" text-anchor="middle" fill="#64748b" font-size="10" font-family="monospace">${(maxDist * 0.5).toFixed(1)} km</text>
+    <text x="${padding.left + chartW}" y="${height - 6}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${maxDist.toFixed(1)} km</text>
 
-  ctx.lineTo(width, height);
-  ctx.closePath();
-  ctx.fillStyle = gradient;
-  ctx.fill();
+    <!-- Area & Line Profile -->
+    <path d="${areaPath}" fill="url(#elevationGrad)" />
+    <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linejoin="round" />
 
-  // Line stroke
-  ctx.beginPath();
-  elevations.forEach((pt, i) => {
-    const x = (pt.dist / maxDist) * width;
-    const eleVal = pt.ele !== null ? pt.ele : minEle;
-    const y = height - 10 - ((eleVal - minEle) / eleRange) * (height - 25);
-
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+    <!-- Hover Indicator Elements -->
+    <line id="hoverLine" x1="0" y1="${padding.top}" x2="0" y2="${padding.top + chartH}" stroke="#f8fafc" stroke-width="1.2" stroke-dasharray="3 3" style="display:none;" />
+    <circle id="hoverDot" cx="0" cy="0" r="4.5" fill="#38bdf8" stroke="#ffffff" stroke-width="2" style="display:none;" />
+  `;
 }
 
 function clearElevationCanvas() {
-  const canvas = document.getElementById("elevationCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const svg = document.getElementById("elevationSvg");
+  if (!svg) return;
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="elevationGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45" />
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+      </linearGradient>
+    </defs>
+    <text x="300" y="55" text-anchor="middle" fill="#64748b" font-size="12" font-family="sans-serif">No route elevation loaded</text>
+  `;
 }
 
 function handleElevationHover(e) {
-  if (!state.currentParsed || !state.currentParsed.elevations) return;
+  if (!state.currentParsed || !state.currentParsed.elevations || state.currentParsed.elevations.length < 2) return;
 
-  const canvas = document.getElementById("elevationCanvas");
-  const rect = canvas.getBoundingClientRect();
+  const svg = document.getElementById("elevationSvg");
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const ratio = Math.max(0, Math.min(1, mouseX / rect.width));
 
@@ -397,7 +441,40 @@ function handleElevationHover(e) {
   const currentPt = elevations[index];
 
   if (currentPt) {
-    document.getElementById("elevationHoverInfo").textContent = `${currentPt.dist} km | ${currentPt.ele !== null ? Math.round(currentPt.ele) + 'm' : '--'}`;
+    const eleDisplay = currentPt.ele !== null && !isNaN(currentPt.ele) ? `${Math.round(currentPt.ele)}m` : "--";
+    document.getElementById("elevationHoverInfo").textContent = `${currentPt.dist.toFixed(1)} km | ${eleDisplay}`;
+
+    const width = 600;
+    const height = 110;
+    const padding = { top: 12, right: 15, bottom: 22, left: 42 };
+    const chartW = width - padding.left - padding.right;
+    const chartH = height - padding.top - padding.bottom;
+    const maxDist = elevations[elevations.length - 1].dist || 1;
+
+    const validEles = elevations.filter((e) => e.ele !== null && !isNaN(e.ele)).map((e) => e.ele);
+    let minEle = validEles.length > 0 ? Math.min(...validEles) : 0;
+    let maxEle = validEles.length > 0 ? Math.max(...validEles) : 100;
+    if (maxEle - minEle < 10) {
+      minEle = Math.max(0, minEle - 10);
+      maxEle = maxEle + 10;
+    }
+    const eleRange = maxEle - minEle;
+
+    const svgX = padding.left + (currentPt.dist / maxDist) * chartW;
+    const currentEleVal = currentPt.ele !== null && !isNaN(currentPt.ele) ? currentPt.ele : minEle;
+    const svgY = padding.top + chartH - ((currentEleVal - minEle) / eleRange) * chartH;
+
+    const hoverLine = document.getElementById("hoverLine");
+    const hoverDot = document.getElementById("hoverDot");
+    if (hoverLine && hoverDot) {
+      hoverLine.setAttribute("x1", svgX);
+      hoverLine.setAttribute("x2", svgX);
+      hoverLine.style.display = "block";
+
+      hoverDot.setAttribute("cx", svgX);
+      hoverDot.setAttribute("cy", svgY);
+      hoverDot.style.display = "block";
+    }
 
     if (coords && coords[index] && state.map) {
       const latLng = coords[index];

@@ -8,6 +8,7 @@ from typing import Optional
 
 from .fit_encoder import FitCourseEncoder, CourseData, Sport
 from .gpx_parser import parse_gpx_file, parse_gpx_string
+from .elevation import enrich_course_elevation
 
 
 def convert_gpx_to_fit(
@@ -15,6 +16,7 @@ def convert_gpx_to_fit(
     output_fit_path: Optional[str | Path] = None,
     course_name: Optional[str] = None,
     sport: Sport = Sport.CYCLING,
+    enrich_dem: bool = True,
 ) -> tuple[Path, CourseData]:
     """
     Converts a GPX file into a Garmin .FIT course file.
@@ -24,6 +26,7 @@ def convert_gpx_to_fit(
         output_fit_path: Destination path for .fit file. Defaults to same directory and stem.
         course_name: Optional custom course name (truncated to 15 chars for Garmin).
         sport: Sport type (Sport.CYCLING, Sport.HIKING, Sport.RUNNING).
+        enrich_dem: Automatically fetch DEM topography if GPX elevation is missing/flat.
 
     Returns:
         tuple[Path, CourseData]: The written .FIT file path and parsed CourseData.
@@ -38,6 +41,9 @@ def convert_gpx_to_fit(
         out_path = Path(output_fit_path)
 
     course_data = parse_gpx_file(in_path, course_name=course_name, sport=sport)
+    if enrich_dem:
+        course_data = enrich_course_elevation(course_data)
+
     encoder = FitCourseEncoder(course_data)
     fit_bytes = encoder.encode()
 

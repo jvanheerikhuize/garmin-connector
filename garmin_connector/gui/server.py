@@ -19,6 +19,7 @@ from typing import Optional
 from ..converter.fit_encoder import Sport
 from ..converter.gpx_parser import parse_gpx_string
 from ..converter.gpx_to_fit import convert_gpx_to_fit
+from ..converter.elevation import enrich_course_elevation
 from ..device.detector import GarminDeviceDetector
 from ..device.manager import GarminDeviceManager
 from ..service.watcher import DirectoryWatcher
@@ -166,6 +167,8 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 custom_name = data.get("name")
 
                 course = parse_gpx_string(xml_str, course_name=custom_name, sport=sport_enum)
+                # Automatically enrich with real DEM elevation if elevations are flat or missing
+                course = enrich_course_elevation(course)
 
                 # Sample points if > 1500 to keep UI ultra snappy
                 pts = course.points

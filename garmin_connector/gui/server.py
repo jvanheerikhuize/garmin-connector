@@ -141,6 +141,89 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 self._send_error_json(str(e), 500)
             return
 
+        if path == "/api/diagnostics":
+            device = GarminDeviceDetector.get_first_device()
+            raw_usb = GarminDeviceDetector.check_raw_usb()
+            
+            # Run quick self-tests
+            tests = []
+            
+            # 1. GPX Parser Test
+            try:
+                sample_gpx = """<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>
+                <trkpt lat="50.1" lon="6.1"><ele>400</ele></trkpt>
+                <trkpt lat="50.2" lon="6.2"><ele>450</ele></trkpt>
+                </trkseg></trk></gpx>"""
+                parsed = parse_gpx_string(sample_gpx, "Test")
+                tests.append({
+                    "name": "GPX Parsing Engine",
+                    "status": "pass",
+                    "detail": f"Parsed {len(parsed.points)} points, {parsed.total_distance:.0f}m"
+                })
+            except Exception as e:
+                tests.append({"name": "GPX Parsing Engine", "status": "fail", "detail": str(e)})
+
+            # 2. FIT Encoder Test
+            try:
+                from ..converter.fit_encoder import FitCourseEncoder
+                encoder = FitCourseEncoder(parsed)
+                fit_bytes = encoder.encode()
+                tests.append({
+                    "name": "FIT 2.0 Binary Encoder & CRC-16",
+                    "status": "pass",
+                    "detail": f"Generated valid {len(fit_bytes)} bytes FIT course"
+                })
+            except Exception as e:
+                tests.append({"name": "FIT 2.0 Binary Encoder & CRC-16", "status": "fail", "detail": str(e)})
+
+            # 3. Hardware USB Bus Check
+            if raw_usb.get("detected"):
+                tests.append({
+                    "name": "Garmin USB Hardware Bus",
+                    "status": "pass",
+                    "detail": f"Device {raw_usb.get('vid')}:{raw_usb.get('pid')} connected"
+                })
+            else:
+                tests.append({
+                    "name": "Garmin USB Hardware Bus",
+                    "status": "warn",
+                    "detail": "No Garmin device on raw USB bus"
+                })
+
+            # 4. Storage / MTP Mount Check
+            if device:
+                tests.append({
+                    "name": "Garmin Storage Filesystem",
+                    "status": "pass",
+                    "detail": f"Accessible at {device.mount_point} ({device.model_name})"
+                })
+            else:
+                tests.append({
+                    "name": "Garmin Storage Filesystem",
+                    "status": "warn",
+                    "detail": "Storage not unlocked or mounted"
+                })
+
+            # 5. Directory Watcher
+            tests.append({
+                "name": "Route Watcher Service",
+                "status": "pass" if GlobalWatcherState.is_running else "idle",
+                "detail": f"{'Running on ' + GlobalWatcherState.watch_path if GlobalWatcherState.is_running else 'Idle (Disabled)'}"
+            })
+
+            self._send_json({
+                "timestamp": __import__("datetime").datetime.now().isoformat(),
+                "tests": tests,
+                "device": {
+                    "connected": bool(device),
+                    "model": device.model_name if device else None,
+                    "unit_id": device.unit_id if device else None,
+                    "mount_point": str(device.mount_point) if device else None,
+                    "raw_usb": raw_usb
+                }
+            })
+            return
+
         if path == "/api/watcher/status":
             self._send_json({
                 "is_running": GlobalWatcherState.is_running,

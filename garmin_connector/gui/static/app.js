@@ -126,6 +126,27 @@ function initEventListeners() {
   btnDownloadFit.addEventListener("click", handleDownloadFit);
   btnRefreshCourses.addEventListener("click", fetchCourses);
 
+  // Diagnostics Modal
+  const btnDiagnostics = document.getElementById("btnDiagnostics");
+  const btnCloseModal = document.getElementById("btnCloseModal");
+  const btnRunSelfTests = document.getElementById("btnRunSelfTests");
+  const modalBackdrop = document.getElementById("diagnosticsModal");
+
+  if (btnDiagnostics) btnDiagnostics.addEventListener("click", openDiagnosticsModal);
+  if (btnCloseModal) btnCloseModal.addEventListener("click", closeDiagnosticsModal);
+  if (btnRunSelfTests) btnRunSelfTests.addEventListener("click", runDiagnostics);
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) closeDiagnosticsModal();
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
+      closeDiagnosticsModal();
+    }
+  });
+
   // Watcher toggle
   toggleWatcher.addEventListener("change", (e) => {
     if (e.target.checked) {
@@ -732,4 +753,55 @@ function showToast(message, type = "info") {
 
 function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// --- Diagnostics & Status Modal ---
+function openDiagnosticsModal() {
+  const modal = document.getElementById("diagnosticsModal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    runDiagnostics();
+  }
+}
+
+function closeDiagnosticsModal() {
+  const modal = document.getElementById("diagnosticsModal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+}
+
+async function runDiagnostics() {
+  const container = document.getElementById("selfTestResults");
+  if (!container) return;
+
+  container.innerHTML = `<div class="test-card loading" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Running diagnostic self-tests...</div>`;
+
+  try {
+    const res = await fetch("/api/diagnostics");
+    const data = await res.json();
+
+    if (!data.tests || data.tests.length === 0) {
+      container.innerHTML = `<div class="test-card"><span class="test-name">No test results returned</span></div>`;
+      return;
+    }
+
+    container.innerHTML = data.tests
+      .map((t) => {
+        const badgeClass = t.status === "pass" ? "pass" : t.status === "warn" ? "warn" : t.status === "idle" ? "idle" : "fail";
+        const badgeLabel = t.status.toUpperCase();
+        return `
+          <div class="test-card">
+            <div class="test-card-top">
+              <span class="test-name">${escapeHtml(t.name)}</span>
+              <span class="test-badge ${badgeClass}">${badgeLabel}</span>
+            </div>
+            <span class="test-detail">${escapeHtml(t.detail)}</span>
+          </div>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    container.innerHTML = `<div class="test-card"><span class="test-name" style="color:var(--accent-red)">Diagnostic check failed: ${escapeHtml(err.message)}</span></div>`;
+  }
 }

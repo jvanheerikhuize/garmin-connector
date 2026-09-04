@@ -34,6 +34,13 @@
           <span class="status-dot"></span>
           <span id="deviceStatusText">Searching for device...</span>
         </div>
+        <button id="btnDiagnostics" class="btn btn-secondary btn-icon" title="View Feature Readiness Matrix & Run Diagnostics">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          Status & Tests
+        </button>
         <button id="btnRescan" class="btn btn-secondary btn-icon" title="Rescan for connected Garmin watches">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
@@ -269,6 +276,156 @@
 
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Diagnostics & Status Modal -->
+    <div id="diagnosticsModal" class="modal-backdrop hidden">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h2 class="modal-title">Feature Status & Diagnostics</h2>
+            <span class="modal-subtitle">Single source of truth for features, self-tests, and playbooks</span>
+          </div>
+          <button id="btnCloseModal" class="btn-text modal-close" title="Close">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Section 1: Live Self-Tests -->
+          <div class="modal-section">
+            <div class="section-title-bar">
+              <h3 class="section-title">⚡ Live Engine Self-Tests</h3>
+              <button id="btnRunSelfTests" class="btn btn-secondary btn-small">Re-run Tests</button>
+            </div>
+            <div id="selfTestResults" class="test-results-grid">
+              <div class="test-card loading">Running diagnostics...</div>
+            </div>
+          </div>
+
+          <!-- Section 2: Feature Readiness Matrix -->
+          <div class="modal-section">
+            <div class="section-title-bar">
+              <h3 class="section-title">📊 Feature Readiness Matrix (from STATUS.md)</h3>
+            </div>
+            <table class="data-table status-matrix-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Scope</th>
+                  <th>Status</th>
+                  <th>Verification Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>GPX Parsing & Telemetry</strong></td>
+                  <td>CLI / Core</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>NodeMapp & Outdooractive tracks</td>
+                </tr>
+                <tr>
+                  <td><strong>FIT Course Binary Encoding</strong></td>
+                  <td>CLI / Core</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>FIT 2.0 header, CRC-16, CoursePoints</td>
+                </tr>
+                <tr>
+                  <td><strong>DEM Elevation Auto-Enrichment</strong></td>
+                  <td>CLI / Core / GUI</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>Auto-enriches flat 0.0m elevation GPX via Open-Elevation</td>
+                </tr>
+                <tr>
+                  <td><strong>Interactive GPS Map</strong></td>
+                  <td>GUI</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>4 free basemaps without API keys</td>
+                </tr>
+                <tr>
+                  <td><strong>Vector SVG Elevation Profile</strong></td>
+                  <td>GUI</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>Hover crosshair sync with Leaflet map</td>
+                </tr>
+                <tr>
+                  <td><strong>Hardware USB Detection</strong></td>
+                  <td>CLI / GUI</td>
+                  <td><span class="status-tag verified">🟢 Verified</span></td>
+                  <td>Vendor ID 091e:0003 & 091e:51fb</td>
+                </tr>
+                <tr>
+                  <td><strong>MTP / Storage Sideloading</strong></td>
+                  <td>CLI / GUI</td>
+                  <td><span class="status-tag testing">🟡 In Testing</span></td>
+                  <td>Playbook #1 (Watch storage unlock & transfer)</td>
+                </tr>
+                <tr>
+                  <td><strong>On-Watch Course Manager</strong></td>
+                  <td>CLI / GUI</td>
+                  <td><span class="status-tag testing">🟡 In Testing</span></td>
+                  <td>Playbook #2 (Scan & delete from /Courses)</td>
+                </tr>
+                <tr>
+                  <td><strong>Folder Auto-Watcher</strong></td>
+                  <td>CLI / GUI</td>
+                  <td><span class="status-tag testing">🟡 In Testing</span></td>
+                  <td>Playbook #3 (Zero-touch RouteMaker sideload)</td>
+                </tr>
+                <tr>
+                  <td><strong>Garmin Connect Cloud Sync</strong></td>
+                  <td>CLI / Core</td>
+                  <td><span class="status-tag planned">⚪ Planned</span></td>
+                  <td>Optional wireless phone sync via Garmin API</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Section 3: Active Playbooks -->
+          <div class="modal-section">
+            <div class="section-title-bar">
+              <h3 class="section-title">📖 Active Testing Playbooks</h3>
+            </div>
+            <div class="playbook-list">
+              <!-- Playbook 1 -->
+              <div class="playbook-card">
+                <div class="playbook-header">
+                  <span class="playbook-badge">Playbook #1</span>
+                  <span class="playbook-name">Watch Storage Unlock & Route Sideloading</span>
+                  <span class="status-tag testing">🟡 Active Test</span>
+                </div>
+                <p class="playbook-desc"><strong>Objective:</strong> Verify route is written to <code>/GARMIN/NewFiles/</code> and Garmin imports it upon USB disconnect.</p>
+                <ol class="playbook-steps">
+                  <li>Check status pill shows <code>● Venu X1 Connected</code> (or unlock storage on watch screen).</li>
+                  <li>Drop <code>~/Desktop/ovelo-unterwegs-im-oberen-ourtal.gpx</code> into the GUI.</li>
+                  <li>Click <strong>"Sideload to Watch"</strong> and verify success toast.</li>
+                  <li>Unplug USB cable & wait ~5s for watch database sync.</li>
+                  <li>Check watch menu: <strong>Navigation &rarr; Courses</strong> for "ovelo---unterwe".</li>
+                </ol>
+              </div>
+
+              <!-- Playbook 2 -->
+              <div class="playbook-card">
+                <div class="playbook-header">
+                  <span class="playbook-badge">Playbook #2</span>
+                  <span class="playbook-name">On-Watch Course List & Deletion</span>
+                  <span class="status-tag testing">🟡 Next Up</span>
+                </div>
+                <p class="playbook-desc"><strong>Objective:</strong> Verify courses can be listed and deleted cleanly from watch storage via GUI.</p>
+              </div>
+
+              <!-- Playbook 3 -->
+              <div class="playbook-card">
+                <div class="playbook-header">
+                  <span class="playbook-badge">Playbook #3</span>
+                  <span class="playbook-name">Zero-Touch RouteMaker Auto-Sideload</span>
+                  <span class="status-tag testing">🟡 Next Up</span>
+                </div>
+                <p class="playbook-desc"><strong>Objective:</strong> Automatically sideload exports from RouteMaker directly into watch.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Leaflet JS -->

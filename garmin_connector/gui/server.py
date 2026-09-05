@@ -394,6 +394,144 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True, "is_running": False})
             return
 
+        # 4. Interactive CLI Command Execution Runner
+        if path == "/api/cli/execute":
+            import time
+            start_t = time.time()
+            try:
+                data = json.loads(body.decode("utf-8")) if body else {}
+                cmd = data.get("command", "")
+                args = data.get("args", {})
+
+                out_lines = []
+                command_str = f"garmin-connector {cmd}"
+                result_payload = {}
+
+                if cmd == "detect":
+                    command_str = "garmin-connector detect"
+                    out_lines.append("[*] Scanning for connected Garmin devices...")
+                    devices = GarminDeviceDetector.detect_devices(args.get("mount"))
+                    if devices:
+                        for d in devices:
+                            out_lines.append(f"[+] Found Device: {d.model_name}")
+                            out_lines.append(f"    Unit ID: {d.unit_id}")
+                            out_lines.append(f"    Software: {d.software_version}")
+                            out_lines.append(f"    Mount: {d.mount_point}")
+                            out_lines.append(f"    GARMIN: {d.garmin_dir}")
+                            out_lines.append(f"    NEWFILES: {d.newfiles_dir}")
+                            out_lines.append(f"    COURSES: {d.courses_dir}")
+                            out_lines.append(f"    MTP Active: {d.is_mtp}")
+                        result_payload["devices_count"] = len(devices)
+                    else:
+                        out_lines.append("[-] No Garmin storage device currently detected.")
+
+                elif cmd == "probe":
+                    command_str = "garmin-connector probe"
+                    out_lines.append("[*] Probing connected Garmin device directly via USB MTP...")
+                    from ..device.mtp_client import GarminMTPClient
+                    with GarminMTPClient() as mtp:
+                        probe_data = mtp.probe_device()
+                        out_lines.append(f"[+] Direct USB MTP: Online ({probe_data['vendor_id']}:{probe_data['product_id']})")
+                        out_lines.append(f"[+] Storages found: {probe_data['storages']}")
+                        out_lines.append(f"[+] GARMIN directory: {'Found' if probe_data['garmin_folder_found'] else 'Missing'}")
+                        out_lines.append(f"[+] NEWFILES directory: {'Found' if probe_data['newfiles_folder_found'] else 'Missing'}")
+                        out_lines.append(f"[+] COURSES directory: {'Found' if probe_data['courses_folder_found'] else 'Missing'}")
+                        out_lines.append(f"[+] Courses on watch: {probe_data['courses_count']}")
+                        out_lines.append(f"[+] Staged files pending sync: {probe_data['staged_newfiles_count']}")
+                        result_payload = probe_data
+
+                elif cmd == "convert":
+                    file_path = args.get("file", "/home/jerry/Desktop/ovelo-unterwegs-im-oberen-ourtal.gpx")
+                    sport_str = args.get("sport", "cycling")
+                    course_name = args.get("name", "ConvertedCourse")
+                    sport_enum = Sport.HIKING if sport_str == "hiking" else Sport.CYCLING
+                    command_str = f"garmin-connector convert {file_path} --sport {sport_str} --name \"{course_name}\""
+
+                    out_lines.append(f"[*] Converting GPX: '{file_path}'...")
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        out_fit = Path(tmp_dir) / f"{Path(file_path).stem}.fit"
+                        dest_fit, cdata = convert_gpx_to_fit(
+                            gpx_path=file_path,
+                            output_fit_path=out_fit,
+                            course_name=course_name,
+                            sport=sport_enum,
+                        )
+                        fit_size = dest_fit.stat().st_size
+                        out_lines.append(f"[+] Successfully converted to FIT 2.0 binary ({fit_size} bytes / {fit_size/1024:.1f} KB)")
+                        out_lines.append(f"    Course Name: {cdata.name}")
+                        out_lines.append(f"    Distance: {cdata.total_distance/1000:.2f} km | Ascent: {cdata.total_ascent:.0f}m")
+                        out_lines.append(f"    Waypoints/Cues: {len(cdata.course_points)} | Trackpoints: {len(cdata.points)}")
+                        result_payload = {
+                            "name": cdata.name,
+                            "distance_km": round(cdata.total_distance / 1000.0, 2),
+                            "ascent_m": round(cdata.total_ascent),
+                            "fit_size_bytes": fit_size,
+                        }
+
+                elif cmd == "list":
+                    command_str = "garmin-connector list"
+                    out_lines.append("[*] Querying courses on watch...")
+                    manager = GarminDeviceManager(custom_mount=args.get("mount"))
+                    courses = manager.list_courses()
+                    out_lines.append(f"[+] Found {len(courses)} course file(s) on {manager.device.model_name}:")
+                    for c in courses:
+                        out_lines.append(f"    - {c.filename} ({c.size_bytes/1024:.1f} KB) [{c.location}]")
+                    result_payload["courses"] = [{"filename": c.filename, "size": c.size_bytes, "location": c.location} for c in courses]
+
+                elif cmd == "backup":
+                    dest_dir = args.get("dest", str(Path.home() / "courses_backup"))
+                    command_str = f"garmin-connector backup --dest \"{dest_dir}\""
+                    out_lines.append(f"[*] Backing up courses to '{dest_dir}'...")
+                    manager = GarminDeviceManager(custom_mount=args.get("mount"))
+                    backed_up = manager.backup_courses(dest_dir)
+                    out_lines.append(f"[+] Successfully backed up {len(backed_up)} course(s) to '{dest_dir}'")
+                    result_payload["backed_up_count"] = len(backed_up)
+
+                elif cmd == "test_suite":
+                    command_str = "python3 -m unittest discover -s tests"
+                    out_lines.append("[*] Executing unit & integration test suite...")
+                    import unittest
+                    import io
+                    loader = unittest.TestLoader()
+                    suite = loader.discover("tests")
+                    stream = io.StringIO()
+                    runner = unittest.TextTestRunner(stream=stream, verbosity=2)
+                    result = runner.run(suite)
+                    test_output = stream.getvalue()
+                    for line in test_output.splitlines():
+                        out_lines.append(line)
+                    out_lines.append(f"[+] Tests run: {result.testsRun}, Errors: {len(result.errors)}, Failures: {len(result.failures)}")
+                    result_payload = {
+                        "tests_run": result.testsRun,
+                        "errors": len(result.errors),
+                        "failures": len(result.failures),
+                        "was_successful": result.wasSuccessful()
+                    }
+
+                else:
+                    out_lines.append(f"[-] Unknown command '{cmd}'")
+
+                dur_ms = round((time.time() - start_t) * 1000, 1)
+                self._send_json({
+                    "success": True,
+                    "command": cmd,
+                    "command_str": command_str,
+                    "output": "\n".join(out_lines),
+                    "duration_ms": dur_ms,
+                    "data": result_payload,
+                })
+            except Exception as e:
+                dur_ms = round((time.time() - start_t) * 1000, 1)
+                self._send_json({
+                    "success": False,
+                    "command": data.get("command", ""),
+                    "command_str": f"garmin-connector {data.get('command', '')}",
+                    "output": f"[-] Error: {e}",
+                    "duration_ms": dur_ms,
+                    "error": str(e),
+                }, status=500)
+            return
+
         self._send_error_json("Not found", 404)
 
     def do_DELETE(self):

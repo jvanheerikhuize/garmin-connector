@@ -272,6 +272,88 @@
           </div>
         </div>
       </section>
+
+      <!-- Full-Width: Interactive CLI Command Lab -->
+      <section class="column full-width-col" id="cliCommandLabSection">
+        <div class="card cli-lab-card">
+          <div class="card-header">
+            <div class="cli-lab-title-group">
+              <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" y1="19" x2="20" y2="19" />
+                </svg>
+                CLI Command Lab & Test Runner
+              </h2>
+              <p class="card-desc">Trigger, verify, and inspect all <code>garmin-connector</code> CLI commands with live terminal output.</p>
+            </div>
+            <div class="cli-lab-actions">
+              <button id="btnClearTerminal" class="btn btn-secondary btn-small">Clear Console</button>
+            </div>
+          </div>
+
+          <!-- Command Trigger Buttons Toolbar -->
+          <div class="cli-buttons-toolbar">
+            <button class="btn btn-primary btn-cli" data-cmd="probe">
+              <span>🛰️</span> <strong>probe</strong> (Direct USB Test)
+            </button>
+            <button class="btn btn-secondary btn-cli" data-cmd="detect">
+              <span>🔍</span> <strong>detect</strong> (Device Scan)
+            </button>
+            <button class="btn btn-secondary btn-cli" data-cmd="list">
+              <span>📋</span> <strong>list</strong> (Watch Courses)
+            </button>
+            <button class="btn btn-secondary btn-cli" data-cmd="convert">
+              <span>🔄</span> <strong>convert</strong> (GPX &rarr; FIT)
+            </button>
+            <button class="btn btn-secondary btn-cli" data-cmd="backup">
+              <span>📦</span> <strong>backup</strong> (Export Courses)
+            </button>
+            <button class="btn btn-secondary btn-cli" data-cmd="test_suite">
+              <span>⚡</span> <strong>test_suite</strong> (Run Unit Tests)
+            </button>
+          </div>
+
+          <!-- Param Overrides Row -->
+          <div class="cli-params-bar">
+            <div class="cli-param-item flex-2">
+              <label>Target File (for convert/push)</label>
+              <input type="text" id="cliParamFile" value="/home/jerry/Desktop/ovelo-unterwegs-im-oberen-ourtal.gpx" />
+            </div>
+            <div class="cli-param-item">
+              <label>Sport</label>
+              <select id="cliParamSport" class="cli-select">
+                <option value="cycling" selected>🚴 Cycling</option>
+                <option value="hiking">🥾 Hiking</option>
+                <option value="running">🏃 Running</option>
+              </select>
+            </div>
+            <div class="cli-param-item">
+              <label>Course Name</label>
+              <input type="text" id="cliParamName" value="OveloOurtal" maxlength="15" />
+            </div>
+            <div class="cli-param-item flex-2">
+              <label>Backup Path</label>
+              <input type="text" id="cliParamDest" value="/home/jerry/courses_backup" />
+            </div>
+          </div>
+
+          <!-- Live CLI Output Terminal -->
+          <div class="cli-terminal-window">
+            <div class="terminal-titlebar">
+              <div class="terminal-dots">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+              </div>
+              <div class="terminal-title" id="terminalCmdTitle">garmin-connector CLI Terminal</div>
+              <div class="terminal-timer" id="terminalTimerBadge">Ready</div>
+            </div>
+            <pre class="terminal-body" id="terminalOutput"><span class="term-dim"># Click any command button above to execute and test CLI operations in real time.</span>
+<span class="term-prompt">jerry@garmin:~$</span> garmin-connector --help</pre>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- Toast Notification Container -->

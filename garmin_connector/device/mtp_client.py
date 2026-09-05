@@ -73,6 +73,12 @@ class GarminMTPClient:
         """Finds and claims the Garmin USB device."""
         self.dev = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if not self.dev:
+            raw_dev = usb.core.find(idVendor=GARMIN_VID, idProduct=0x0003)
+            if raw_dev:
+                raise ConnectionError(
+                    "Garmin watch connected in Garmin Protocol Mode (091e:0003). "
+                    "Please tap 'Yes' on the watch screen or set Settings > System > USB Mode to MTP/Storage."
+                )
             raise ConnectionError(f"Garmin MTP device ({hex(self.vid)}:{hex(self.pid)}) not found on USB bus.")
 
         try:

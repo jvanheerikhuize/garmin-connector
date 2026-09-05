@@ -141,6 +141,23 @@ function initEventListeners() {
     });
   }
 
+  // CLI Command Lab Buttons
+  const cliButtons = document.querySelectorAll(".btn-cli");
+  cliButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cmd = btn.getAttribute("data-cmd");
+      if (cmd) executeCliCommand(cmd);
+    });
+  });
+
+  const btnClearTerminal = document.getElementById("btnClearTerminal");
+  if (btnClearTerminal) {
+    btnClearTerminal.addEventListener("click", () => {
+      const term = document.getElementById("terminalOutput");
+      if (term) term.innerHTML = `<span class="term-dim"># Terminal cleared. Click any command button above to execute.</span>\n<span class="term-prompt">jerry@garmin:~$</span> `;
+    });
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
       closeDiagnosticsModal();
@@ -805,3 +822,86 @@ async function runDiagnostics() {
     container.innerHTML = `<div class="test-card"><span class="test-name" style="color:var(--accent-red)">Diagnostic check failed: ${escapeHtml(err.message)}</span></div>`;
   }
 }
+
+// --- CLI Command Lab Execution ---
+async function executeCliCommand(cmd) {
+  const terminal = document.getElementById("terminalOutput");
+  const title = document.getElementById("terminalCmdTitle");
+  const timerBadge = document.getElementById("terminalTimerBadge");
+
+  const targetFile = document.getElementById("cliParamFile")?.value || "";
+  const sport = document.getElementById("cliParamSport")?.value || "cycling";
+  const courseName = document.getElementById("cliParamName")?.value || "";
+  const backupDest = document.getElementById("cliParamDest")?.value || "";
+
+  const payload = {
+    command: cmd,
+    args: {
+      file: targetFile,
+      sport: sport,
+      name: courseName,
+      dest: backupDest,
+    },
+  };
+
+  title.textContent = `garmin-connector ${cmd}...`;
+  timerBadge.textContent = "Running...";
+  timerBadge.style.background = "rgba(245, 158, 11, 0.2)";
+  timerBadge.style.color = "#fbbf24";
+  timerBadge.style.borderColor = "rgba(245, 158, 11, 0.4)";
+
+  try {
+    const res = await fetch("/api/cli/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    const cmdDisplay = data.command_str || `garmin-connector ${cmd}`;
+    title.textContent = cmdDisplay;
+    timerBadge.textContent = `⚡ ${data.duration_ms || 0}ms ${data.success ? '✔' : '✖'}`;
+
+    if (data.success) {
+      timerBadge.style.background = "rgba(16, 185, 129, 0.2)";
+      timerBadge.style.color = "#34d399";
+      timerBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
+    } else {
+      timerBadge.style.background = "rgba(239, 68, 68, 0.2)";
+      timerBadge.style.color = "#f87171";
+      timerBadge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+    }
+
+    // Colorize output lines
+    const formattedOutput = (data.output || "")
+      .split("\n")
+      .map((line) => {
+        if (line.startsWith("[+]") || line.startsWith("✔")) {
+          return `<span style="color:#34d399">${escapeHtml(line)}</span>`;
+        } else if (line.startsWith("[-]") || line.startsWith("✖") || line.includes("Error")) {
+          return `<span style="color:#f87171">${escapeHtml(line)}</span>`;
+        } else if (line.startsWith("[*]") || line.startsWith("ℹ")) {
+          return `<span style="color:#38bdf8">${escapeHtml(line)}</span>`;
+        }
+        return escapeHtml(line);
+      })
+      .join("\n");
+
+    const block = `\n<span class="term-prompt">jerry@garmin:~$</span> <strong style="color:#f8fafc">${escapeHtml(cmdDisplay)}</strong>\n${formattedOutput}\n`;
+    terminal.innerHTML += block;
+    terminal.scrollTop = terminal.scrollHeight;
+
+    // Refresh state if relevant
+    if (cmd === "detect" || cmd === "probe" || cmd === "list" || cmd === "backup") {
+      checkDeviceStatus();
+      fetchCourses();
+    }
+  } catch (err) {
+    timerBadge.textContent = "Error ✖";
+    timerBadge.style.background = "rgba(239, 68, 68, 0.2)";
+    timerBadge.style.color = "#f87171";
+    terminal.innerHTML += `\n<span class="term-prompt">jerry@garmin:~$</span> garmin-connector ${cmd}\n<span style="color:#f87171">[-] Request failed: ${escapeHtml(err.message)}</span>\n`;
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+}
+

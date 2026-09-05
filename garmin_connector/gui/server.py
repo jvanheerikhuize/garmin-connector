@@ -318,6 +318,33 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 self._send_error_json(f"Failed to parse GPX: {e}", 400)
             return
 
+        # 1b. Direct Binary FIT Course Download
+        if path == "/api/convert/fit":
+            try:
+                data = json.loads(body.decode("utf-8"))
+                xml_str = data.get("gpx_content", "")
+                sport_name = data.get("sport", "cycling")
+                sport_enum = Sport.HIKING if sport_name == "hiking" else Sport.CYCLING
+                custom_name = data.get("name")
+
+                from ..converter.fit_encoder import FitCourseEncoder
+                course = parse_gpx_string(xml_str, course_name=custom_name, sport=sport_enum)
+                course = enrich_course_elevation(course)
+                encoder = FitCourseEncoder(course)
+                fit_bytes = encoder.encode()
+
+                safe_filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', course.name or "course") + ".fit"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Disposition", f"attachment; filename=\"{safe_filename}\"")
+                self.send_header("Content-Length", str(len(fit_bytes)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(fit_bytes)
+            except Exception as e:
+                self._send_error_json(f"FIT Compilation failed: {e}", 400)
+            return
+
         # 2. Sideload Route to Device
         if path == "/api/sideload":
             try:
@@ -338,7 +365,6 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     src_file = Path(tmp_dir) / file_name
                     if file_name.endswith(".fit") and isinstance(file_content, str):
-                        # Hex or base64 if fit
                         import base64
                         src_file.write_bytes(base64.b64decode(file_content))
                     else:
@@ -352,6 +378,16 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     "filename": dest.name,
                     "message": f"Successfully sideloaded to {device.model_name}! Unplug USB to sync.",
                 })
+            except OSError as e:
+                if e.errno == 95 or "Operation not supported" in str(e):
+                    self._send_error_json(
+                        "Watch USB storage is in MTP mode (Linux GVFS FUSE read-only). "
+                        "To write directly: Tap 'Yes' or switch watch USB mode to 'Mass Storage' (Settings > System > USB Mode), "
+                        "or click 'Download .FIT' to save the compiled course file!",
+                        status=409
+                    )
+                else:
+                    self._send_error_json(f"Sideload failed: {e}", 500)
             except Exception as e:
                 self._send_error_json(f"Sideload failed: {e}", 500)
             return

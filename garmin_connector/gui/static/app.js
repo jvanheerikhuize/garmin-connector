@@ -608,26 +608,38 @@ async function handleDownloadFit() {
     return;
   }
 
-  // Trigger preview -> binary generation on server
-  showToast("Preparing FIT course download...", "info");
+  // Trigger binary FIT generation & direct download
+  showToast("Compiling Garmin FIT course...", "info");
   try {
     const courseName = document.getElementById("courseName").value.trim() || state.currentFile.name.replace(/\.gpx$/i, "");
     const sport = document.querySelector('input[name="sport"]:checked')?.value || "cycling";
 
-    const res = await fetch("/api/sideload", {
+    const res = await fetch("/api/convert/fit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        filename: state.currentFile.name,
-        content: state.currentContent,
+        gpx_content: state.currentContent,
         sport: sport,
         name: courseName,
       }),
     });
-    const data = await res.json();
-    if (data.success) {
-      showToast("Course compiled successfully!", "success");
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || "FIT compilation failed");
     }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const cleanFilename = (courseName.replace(/[^a-zA-Z0-9_\-]/g, "_") || "course") + ".fit";
+    a.download = cleanFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded '${cleanFilename}' (FIT 2.0)`, "success");
   } catch (err) {
     showToast(`Conversion error: ${err.message}`, "error");
   }

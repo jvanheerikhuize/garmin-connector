@@ -239,6 +239,59 @@ def cmd_serve(args):
     uvicorn.run(app, host=args.host, port=args.port)
 
 
+def cmd_probe(args):
+    """Directly probes the connected Garmin watch via USB MTP and filesystem."""
+    from .device.mtp_client import GarminMTPClient
+    print_info("Probing connected Garmin device directly...")
+
+    # 1. Hardware probe via direct MTP client
+    mtp_result = None
+    try:
+        with GarminMTPClient() as mtp:
+            mtp_result = mtp.probe_device()
+    except Exception as e:
+        print_info(f"Direct USB MTP probe note: {e}")
+
+    # 2. Filesystem probe
+    fs_devices = GarminDeviceDetector.detect_devices(args.mount)
+
+    if console:
+        table = Table(title="Garmin Watch Functional Probe Results")
+        table.add_column("Parameter", style="bold cyan")
+        table.add_column("Status / Value")
+
+        if mtp_result:
+            table.add_row("Direct USB MTP", "[bold green]Online[/bold green]")
+            table.add_row("Vendor / Product ID", f"{mtp_result['vendor_id']}:{mtp_result['product_id']}")
+            table.add_row("Garmin Folder", "[green]Present[/green]" if mtp_result["garmin_folder_found"] else "[red]Missing[/red]")
+            table.add_row("NewFiles Folder", "[green]Present (Ingest ready)[/green]" if mtp_result["newfiles_folder_found"] else "[red]Missing[/red]")
+            table.add_row("Courses Folder", "[green]Present[/green]" if mtp_result["courses_folder_found"] else "[red]Missing[/red]")
+            table.add_row("Courses On Watch", str(mtp_result["courses_count"]))
+            table.add_row("Staged Files Pending", str(mtp_result["staged_newfiles_count"]))
+
+        if fs_devices:
+            dev = fs_devices[0]
+            table.add_row("Model Name", dev.model_name)
+            table.add_row("Unit ID", dev.unit_id or "Unknown")
+            table.add_row("Firmware Version", dev.software_version or "Unknown")
+            table.add_row("Mount Point", str(dev.mount_point))
+
+        console.print(table)
+    else:
+        print("=== Garmin Watch Probe ===")
+        if mtp_result:
+            print(f"USB MTP: Online ({mtp_result['vendor_id']}:{mtp_result['product_id']})")
+            print(f"GARMIN folder: {mtp_result['garmin_folder_found']}")
+            print(f"Courses on watch: {mtp_result['courses_count']}")
+            print(f"Staged files: {mtp_result['staged_newfiles_count']}")
+        if fs_devices:
+            dev = fs_devices[0]
+            print(f"Model: {dev.model_name} (Unit ID: {dev.unit_id})")
+            print(f"Mount: {dev.mount_point}")
+
+    print_success("Watch probe completed successfully.")
+
+
 def cmd_gui(args):
     """Launches the interactive desktop GUI dashboard."""
     from .gui.launcher import launch_gui
@@ -264,6 +317,10 @@ def build_parser() -> argparse.ArgumentParser:
     # detect
     p_detect = subparsers.add_parser("detect", help="Scan and show connected Garmin watch details")
     p_detect.set_defaults(func=cmd_detect)
+
+    # probe
+    p_probe = subparsers.add_parser("probe", help="Directly probe and functionally test connected watch via USB")
+    p_probe.set_defaults(func=cmd_probe)
 
     # list
     p_list = subparsers.add_parser("list", aliases=["ls"], help="List stored courses on watch")

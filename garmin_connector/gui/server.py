@@ -204,7 +204,24 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     "detail": "Storage not unlocked or mounted"
                 })
 
-            # 5. Directory Watcher
+            # 5. Direct USB MTP Probe Check
+            try:
+                from .device.mtp_client import GarminMTPClient
+                with GarminMTPClient() as mtp:
+                    probe = mtp.probe_device()
+                    tests.append({
+                        "name": "Direct USB MTP Protocol",
+                        "status": "pass",
+                        "detail": f"Online (Garmin: {probe['garmin_folder_found']}, NewFiles: {probe['newfiles_folder_found']}, Courses: {probe['courses_count']})"
+                    })
+            except Exception as e:
+                tests.append({
+                    "name": "Direct USB MTP Protocol",
+                    "status": "idle",
+                    "detail": f"Direct USB client idle ({e})"
+                })
+
+            # 6. Directory Watcher
             tests.append({
                 "name": "Route Watcher Service",
                 "status": "pass" if GlobalWatcherState.is_running else "idle",
@@ -222,6 +239,16 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     "raw_usb": raw_usb
                 }
             })
+            return
+
+        if path == "/api/probe":
+            try:
+                from .device.mtp_client import GarminMTPClient
+                with GarminMTPClient() as mtp:
+                    probe_data = mtp.probe_device()
+                    self._send_json({"success": True, "probe": probe_data})
+            except Exception as e:
+                self._send_json({"success": False, "error": str(e)}, 500)
             return
 
         if path == "/api/watcher/status":

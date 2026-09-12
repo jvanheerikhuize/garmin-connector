@@ -2,7 +2,11 @@ let map, trackLayer;
 
 document.addEventListener("DOMContentLoaded", () => {
   map = L.map('map').setView([50, 6], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }).addTo(map);
 
   checkDeviceStatus();
   setInterval(checkDeviceStatus, 3000);
@@ -10,12 +14,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
 
+
+  const confirmModal = document.getElementById("confirmModal");
+  const confirmModalClose = document.getElementById("confirmModalClose");
+  const btnConfirmCancel = document.getElementById("btnConfirmCancel");
+  const btnConfirmDelete = document.getElementById("btnConfirmDelete");
+
+  const closeConfirmModal = () => {
+    confirmModal.classList.add("hidden");
+    courseToDelete = null;
+  };
+
+  confirmModalClose.addEventListener("click", closeConfirmModal);
+  btnConfirmCancel.addEventListener("click", closeConfirmModal);
+  
+  confirmModal.addEventListener("click", (e) => {
+    if (e.target === confirmModal) closeConfirmModal();
+  });
+
+  btnConfirmDelete.addEventListener("click", performDeleteCourse);
+
   dropZone.addEventListener("click", () => fileInput.click());
-  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("hover"); });
-  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("hover"));
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.classList.remove("hover");
+    dropZone.classList.remove("drag-over");
     if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
   });
   fileInput.addEventListener("change", (e) => {
@@ -31,13 +55,14 @@ async function checkDeviceStatus() {
     const text = document.getElementById("deviceStatus");
     const btnRefresh = document.getElementById("btnRefresh");
     const dropZone = document.getElementById("dropZone");
-    
+
     if (data.connected) {
       dot.classList.add("connected");
       text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
       btnRefresh.disabled = false;
-      dropZone.classList.remove("disabled");
-      
+      dropZone.style.opacity = "1";
+      dropZone.style.pointerEvents = "auto";
+
       const tbody = document.getElementById("courseTableBody");
       if (tbody.children.length === 1 && (tbody.innerText.includes("No courses") || tbody.innerText.includes("No device"))) {
         fetchCourses();
@@ -46,8 +71,9 @@ async function checkDeviceStatus() {
       dot.classList.remove("connected");
       text.innerText = "No device connected. Please plug in your Garmin watch.";
       btnRefresh.disabled = true;
-      dropZone.classList.add("disabled");
-      document.getElementById("courseTableBody").innerHTML = '<tr><td colspan="4">No device connected</td></tr>';
+      dropZone.style.opacity = "0.5";
+      dropZone.style.pointerEvents = "none";
+      document.getElementById("courseTableBody").innerHTML = '<div class="empty-state">No device connected</div>';
     }
   } catch (e) {
     console.error("Failed to check device", e);
@@ -55,7 +81,9 @@ async function checkDeviceStatus() {
 }
 
 async function handleFileUpload(file) {
-  if (document.getElementById("dropZone").classList.contains("disabled")) return;
+  const dropZone = document.getElementById("dropZone");
+  if (dropZone.style.pointerEvents === "none") return;
+  
   if (!file.name.toLowerCase().endsWith(".gpx")) {
     showMessage("Only GPX files are supported.", "error");
     return;
@@ -87,33 +115,54 @@ async function fetchCourses() {
   try {
     const res = await fetch("/api/courses");
     const data = await res.json();
-    const tbody = document.getElementById("courseTableBody");
+    const listBody = document.getElementById("courseTableBody");
     if (!data.courses || data.courses.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">No courses on watch</td></tr>';
+      listBody.innerHTML = '<div class="empty-state">No courses on watch</div>';
       return;
     }
     
-    tbody.innerHTML = data.courses.map(c => `
-      <tr>
-        <td>${c.filename}</td>
-        <td>${Math.round(c.size_bytes / 1024)} KB</td>
-        <td>${c.location}</td>
-        <td>
-          <a onclick="mapCourse(\'${c.filename}\')">Map</a> | 
-          <a onclick="deleteCourse('${c.filename}')">Delete</a>
-        </td>
-      </tr>
+    listBody.innerHTML = data.courses.map(c => `
+      <div class="course-card">
+        <div class="course-icon">${c.filename.endsWith('.fit') ? '⚡' : '🗺️'}</div>
+        <div class="course-info">
+          <div class="course-name">${c.filename}</div>
+          <div class="course-meta">${Math.round(c.size_bytes / 1024)} KB &bull; ${c.location}</div>
+        </div>
+        <div class="course-actions">
+          <button class="btn btn-primary btn-small" onclick="mapCourse('${c.filename}')">Map</button>
+          <button class="btn btn-danger btn-small" onclick="deleteCourse('${c.filename}')">Del</button>
+        </div>
+      </div>
     `).join('');
   } catch (err) {
     console.error(err);
   }
 }
 
-async function deleteCourse(filename) {
-  if (!confirm(`Delete ${filename}?`)) return;
+let courseToDelete = null;
+
+function deleteCourse(filename) {
+  courseToDelete = filename;
+  document.getElementById("confirmModalText").innerText = `Are you sure you want to delete ${filename}?`;
+  document.getElementById("confirmModal").classList.remove("hidden");
+}
+
+async function performDeleteCourse() {
+  if (!courseToDelete) return;
+  const filename = courseToDelete;
+  document.getElementById("confirmModal").classList.add("hidden");
+  courseToDelete = null;
+
   try {
     const res = await fetch(`/api/courses/${filename}`, { method: 'DELETE' });
-    if (res.ok) fetchCourses();
+    if (res.ok) {
+      if (trackLayer) map.removeLayer(trackLayer);
+      document.getElementById("mapInfo").innerText = "Select a course to preview";
+      fetchCourses();
+      showMessage(`Deleted ${filename}`, "success");
+    } else {
+      showMessage("Delete failed", "error");
+    }
   } catch (err) {
     showMessage("Delete failed", "error");
   }
@@ -130,7 +179,12 @@ async function mapCourse(filename) {
     if (trackLayer) map.removeLayer(trackLayer);
     
     if (pts && pts.length > 0) {
-      trackLayer = L.polyline(pts, {color: '#f38ba8', weight: 4}).addTo(map);
+      trackLayer = L.polyline(pts, {
+        color: '#00f0ff', 
+        weight: 4, 
+        opacity: 0.8,
+        className: 'glowing-track'
+      }).addTo(map);
       map.fitBounds(trackLayer.getBounds());
       document.getElementById("mapInfo").innerText = `Previewing ${filename} (${pts.length} points)`;
     } else {

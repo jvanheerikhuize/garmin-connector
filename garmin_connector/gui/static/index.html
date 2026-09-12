@@ -3,67 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Garmin Connector MVP</title>
+  <title>Garmin Connector</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body { font-family: sans-serif; margin: 0; padding: 20px; background: #1e1e2e; color: #cdd6f4; }
-    .container { max-width: 900px; margin: auto; }
-    .card { background: #313244; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    h1, h2 { margin-top: 0; }
-    #map { height: 400px; width: 100%; border-radius: 8px; margin-top: 10px; background: #45475a; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #45475a; }
-    button { background: #89b4fa; color: #11111b; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        button:hover:not(:disabled) { background: #74c7ec; }
-    button:disabled { background: #45475a; color: #a6adc8; cursor: not-allowed; }
-    #dropZone.disabled { opacity: 0.5; pointer-events: none; border-color: #45475a; cursor: not-allowed; }
-    a { color: #89b4fa; cursor: pointer; text-decoration: underline; }
-  
-    /* Toast Styles */
-    #toastContainer { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
-    .toast { background: #313244; border-left: 4px solid #89b4fa; padding: 12px 20px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); animation: slideIn 0.3s ease forwards; max-width: 300px; display: flex; align-items: center; gap: 10px; }
-    .toast.success { border-color: #a6e3a1; }
-    .toast.error { border-color: #f38ba8; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes fadeOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-  </style>
-
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h1><span id="statusDot" class="status-indicator"></span> Garmin Connector MVP</h1>
-      <p id="deviceStatus">No device connected. Please plug in your Garmin watch.</p>
-    </div>
+  <div class="app-container">
+    <nav class="navbar">
+      <div class="navbar-brand">Garmin Connector</div>
+      <div class="device-status-container">
+        <span id="statusDot" class="status-indicator"></span>
+        <span id="deviceStatus">Connecting...</span>
+      </div>
+    </nav>
 
-    <div class="card">
-      <h2>Ingest GPX Route</h2>
-      <div id="dropZone" class="disabled">
-        <p>Drop a GPX file here to sideload, or click to select.</p>
-        <input type="file" id="fileInput" accept=".gpx" style="display: none;" />
+    <div class="main-content">
+      <div class="sidebar">
+        <div class="card">
+          <h2>Courses on Watch</h2>
+          <button id="btnRefresh" class="btn btn-primary btn-small" onclick="fetchCourses()" disabled>Refresh List</button>
+          <table class="data-table">
+            <thead><tr><th>Filename</th><th>Size</th><th>Location</th><th>Action</th></tr></thead>
+            <tbody id="courseTableBody"><tr><td colspan="4">No courses loaded</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="maparea">
+        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+          <h2>Map Preview</h2>
+          <div id="map" style="flex: 1; border-radius: var(--radius-md);"></div>
+          <p id="mapInfo" style="margin-top: 12px; font-size: 0.9rem; color: var(--text-muted);">Select a course to preview</p>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Courses on Watch</h2>
-      <button id="btnRefresh" onclick="fetchCourses()" disabled>Refresh List</button>
-      <table>
-        <thead><tr><th>Filename</th><th>Size</th><th>Location</th><th>Action</th></tr></thead>
-        <tbody id="courseTableBody"><tr><td colspan="4">No courses loaded</td></tr></tbody>
-      </table>
-    </div>
+    <button id="btnIngest" class="btn btn-primary btn-large" style="position: fixed; bottom: 24px; right: 24px; z-index: 100;" disabled>+ Sideload Course</button>
+  </div>
 
-    <div class="card">
-      <h2>Map Preview</h2>
-      <p id="mapInfo">Select a .gpx course from the watch to preview.</p>
-      <div id="map"></div>
+  <div id="ingestModal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">Sideload GPX Course</div>
+          <div class="modal-subtitle">Drop a GPX file or click to select</div>
+        </div>
+        <button class="btn btn-text modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="dropZone" class="dropzone">
+          <p>Drop a GPX file here, or click to browse</p>
+          <input type="file" id="fileInput" accept=".gpx" style="display: none;" />
+        </div>
+      </div>
     </div>
   </div>
 
-  
-  <div id="toastContainer"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <div id="toastContainer" class="toast-container"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -9,13 +9,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
+  const ingestModal = document.getElementById("ingestModal");
+  const btnIngest = document.getElementById("btnIngest");
+  const modalClose = document.getElementById("modalClose");
+
+  btnIngest.addEventListener("click", () => ingestModal.classList.remove("hidden"));
+  modalClose.addEventListener("click", () => ingestModal.classList.add("hidden"));
+  ingestModal.addEventListener("click", (e) => {
+    if (e.target === ingestModal) ingestModal.classList.add("hidden");
+  });
 
   dropZone.addEventListener("click", () => fileInput.click());
-  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("hover"); });
-  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("hover"));
+  dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.classList.remove("hover");
+    dropZone.classList.remove("drag-over");
     if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
   });
   fileInput.addEventListener("change", (e) => {
@@ -30,14 +39,14 @@ async function checkDeviceStatus() {
     const dot = document.getElementById("statusDot");
     const text = document.getElementById("deviceStatus");
     const btnRefresh = document.getElementById("btnRefresh");
-    const dropZone = document.getElementById("dropZone");
-    
+    const btnIngest = document.getElementById("btnIngest");
+
     if (data.connected) {
       dot.classList.add("connected");
       text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
       btnRefresh.disabled = false;
-      dropZone.classList.remove("disabled");
-      
+      btnIngest.disabled = false;
+
       const tbody = document.getElementById("courseTableBody");
       if (tbody.children.length === 1 && (tbody.innerText.includes("No courses") || tbody.innerText.includes("No device"))) {
         fetchCourses();
@@ -46,7 +55,7 @@ async function checkDeviceStatus() {
       dot.classList.remove("connected");
       text.innerText = "No device connected. Please plug in your Garmin watch.";
       btnRefresh.disabled = true;
-      dropZone.classList.add("disabled");
+      btnIngest.disabled = true;
       document.getElementById("courseTableBody").innerHTML = '<tr><td colspan="4">No device connected</td></tr>';
     }
   } catch (e) {
@@ -55,7 +64,7 @@ async function checkDeviceStatus() {
 }
 
 async function handleFileUpload(file) {
-  if (document.getElementById("dropZone").classList.contains("disabled")) return;
+  if (document.getElementById("btnIngest").disabled) return;
   if (!file.name.toLowerCase().endsWith(".gpx")) {
     showMessage("Only GPX files are supported.", "error");
     return;
@@ -72,6 +81,7 @@ async function handleFileUpload(file) {
       const data = await res.json();
       if (data.success) {
         showMessage("Successfully sideloaded!", "success");
+        document.getElementById("ingestModal").classList.add("hidden");
         fetchCourses();
       } else {
         showMessage("Failed to sideload: " + data.error, "error");
@@ -113,7 +123,11 @@ async function deleteCourse(filename) {
   if (!confirm(`Delete ${filename}?`)) return;
   try {
     const res = await fetch(`/api/courses/${filename}`, { method: 'DELETE' });
-    if (res.ok) fetchCourses();
+    if (res.ok) {
+      if (trackLayer) map.removeLayer(trackLayer);
+      document.getElementById("mapInfo").innerText = "Select a course to preview";
+      fetchCourses();
+    }
   } catch (err) {
     showMessage("Delete failed", "error");
   }

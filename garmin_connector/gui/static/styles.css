@@ -659,6 +659,18 @@ input:checked + .slider:before {
   font-family: var(--font-mono);
 }
 
+.data-table a {
+  color: var(--accent-cyan);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.data-table a:hover {
+  color: #38bdf8;
+  text-decoration: underline;
+}
+
 .empty-state {
   text-align: center;
   color: var(--text-muted);

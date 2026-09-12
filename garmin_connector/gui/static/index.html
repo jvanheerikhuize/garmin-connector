@@ -14,11 +14,9 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid #45475a; }
     button { background: #89b4fa; color: #11111b; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #74c7ec; }
-    .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f38ba8; margin-right: 5px; }
-    .status-indicator.connected { background: #a6e3a1; }
-    #dropZone { border: 2px dashed #89b4fa; padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 20px; cursor: pointer; }
-    #dropZone.hover { background: #45475a; }
+        button:hover:not(:disabled) { background: #74c7ec; }
+    button:disabled { background: #45475a; color: #a6adc8; cursor: not-allowed; }
+    #dropZone.disabled { opacity: 0.5; pointer-events: none; border-color: #45475a; cursor: not-allowed; }
     a { color: #89b4fa; cursor: pointer; text-decoration: underline; }
   
     /* Toast Styles */
@@ -40,7 +38,7 @@
 
     <div class="card">
       <h2>Ingest GPX Route</h2>
-      <div id="dropZone">
+      <div id="dropZone" class="disabled">
         <p>Drop a GPX file here to sideload, or click to select.</p>
         <input type="file" id="fileInput" accept=".gpx" style="display: none;" />
       </div>
@@ -48,7 +46,7 @@
 
     <div class="card">
       <h2>Courses on Watch</h2>
-      <button onclick="fetchCourses()">Refresh List</button>
+      <button id="btnRefresh" onclick="fetchCourses()" disabled>Refresh List</button>
       <table>
         <thead><tr><th>Filename</th><th>Size</th><th>Location</th><th>Action</th></tr></thead>
         <tbody id="courseTableBody"><tr><td colspan="4">No courses loaded</td></tr></tbody>

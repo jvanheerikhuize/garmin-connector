@@ -29,15 +29,25 @@ async function checkDeviceStatus() {
     const data = await res.json();
     const dot = document.getElementById("statusDot");
     const text = document.getElementById("deviceStatus");
+    const btnRefresh = document.getElementById("btnRefresh");
+    const dropZone = document.getElementById("dropZone");
+    
     if (data.connected) {
       dot.classList.add("connected");
       text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
-      if (document.getElementById("courseTableBody").children.length === 1 && document.getElementById("courseTableBody").innerText.includes("No courses")) {
+      btnRefresh.disabled = false;
+      dropZone.classList.remove("disabled");
+      
+      const tbody = document.getElementById("courseTableBody");
+      if (tbody.children.length === 1 && (tbody.innerText.includes("No courses") || tbody.innerText.includes("No device"))) {
         fetchCourses();
       }
     } else {
       dot.classList.remove("connected");
       text.innerText = "No device connected. Please plug in your Garmin watch.";
+      btnRefresh.disabled = true;
+      dropZone.classList.add("disabled");
+      document.getElementById("courseTableBody").innerHTML = '<tr><td colspan="4">No device connected</td></tr>';
     }
   } catch (e) {
     console.error("Failed to check device", e);
@@ -45,6 +55,7 @@ async function checkDeviceStatus() {
 }
 
 async function handleFileUpload(file) {
+  if (document.getElementById("dropZone").classList.contains("disabled")) return;
   if (!file.name.toLowerCase().endsWith(".gpx")) {
     showMessage("Only GPX files are supported.", "error");
     return;

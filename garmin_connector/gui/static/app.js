@@ -19,6 +19,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === ingestModal) ingestModal.classList.add("hidden");
   });
 
+  const confirmModal = document.getElementById("confirmModal");
+  const confirmModalClose = document.getElementById("confirmModalClose");
+  const btnConfirmCancel = document.getElementById("btnConfirmCancel");
+  const btnConfirmDelete = document.getElementById("btnConfirmDelete");
+
+  const closeConfirmModal = () => {
+    confirmModal.classList.add("hidden");
+    courseToDelete = null;
+  };
+
+  confirmModalClose.addEventListener("click", closeConfirmModal);
+  btnConfirmCancel.addEventListener("click", closeConfirmModal);
+  
+  confirmModal.addEventListener("click", (e) => {
+    if (e.target === confirmModal) closeConfirmModal();
+  });
+
+  btnConfirmDelete.addEventListener("click", performDeleteCourse);
+
   dropZone.addEventListener("click", () => fileInput.click());
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
   dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
@@ -119,14 +138,29 @@ async function fetchCourses() {
   }
 }
 
-async function deleteCourse(filename) {
-  if (!confirm(`Delete ${filename}?`)) return;
+let courseToDelete = null;
+
+function deleteCourse(filename) {
+  courseToDelete = filename;
+  document.getElementById("confirmModalText").innerText = `Are you sure you want to delete ${filename}?`;
+  document.getElementById("confirmModal").classList.remove("hidden");
+}
+
+async function performDeleteCourse() {
+  if (!courseToDelete) return;
+  const filename = courseToDelete;
+  document.getElementById("confirmModal").classList.add("hidden");
+  courseToDelete = null;
+
   try {
     const res = await fetch(`/api/courses/${filename}`, { method: 'DELETE' });
     if (res.ok) {
       if (trackLayer) map.removeLayer(trackLayer);
       document.getElementById("mapInfo").innerText = "Select a course to preview";
       fetchCourses();
+      showMessage(`Deleted ${filename}`, "success");
+    } else {
+      showMessage("Delete failed", "error");
     }
   } catch (err) {
     showMessage("Delete failed", "error");

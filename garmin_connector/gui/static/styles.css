@@ -723,6 +723,11 @@ input:checked + .slider:before {
   to { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* Modal Backdrop & Dialog */
 .modal-backdrop {
   position: fixed;

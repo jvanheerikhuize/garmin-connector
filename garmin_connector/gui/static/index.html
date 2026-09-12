@@ -59,6 +59,22 @@
     </div>
   </div>
 
+  <div id="confirmModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 400px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">Confirm Deletion</div>
+          <div class="modal-subtitle" id="confirmModalText">Are you sure you want to delete this course?</div>
+        </div>
+        <button class="btn btn-text modal-close" id="confirmModalClose">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+        <button id="btnConfirmCancel" class="btn btn-secondary">Cancel</button>
+        <button id="btnConfirmDelete" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

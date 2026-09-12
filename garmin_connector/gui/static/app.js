@@ -46,7 +46,7 @@ async function checkDeviceStatus() {
 
 async function handleFileUpload(file) {
   if (!file.name.toLowerCase().endsWith(".gpx")) {
-    alert("Only GPX files are supported in MVP.");
+    showMessage("Only GPX files are supported.", "error");
     return;
   }
   const reader = new FileReader();
@@ -60,13 +60,13 @@ async function handleFileUpload(file) {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Successfully sideloaded!");
+        showMessage("Successfully sideloaded!", "success");
         fetchCourses();
       } else {
-        alert("Failed to sideload: " + data.error);
+        showMessage("Failed to sideload: " + data.error, "error");
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      showMessage("Error: " + err.message, "error");
     }
   };
   reader.readAsText(file);
@@ -104,7 +104,7 @@ async function deleteCourse(filename) {
     const res = await fetch(`/api/courses/${filename}`, { method: 'DELETE' });
     if (res.ok) fetchCourses();
   } catch (err) {
-    alert("Delete failed");
+    showMessage("Delete failed", "error");
   }
 }
 
@@ -126,7 +126,20 @@ async function mapCourse(filename) {
       document.getElementById("mapInfo").innerText = `No track points found in ${filename}`;
     }
   } catch (err) {
-    alert("Failed to map course: " + err.message);
-    document.getElementById("mapInfo").innerText = "Failed to load.";
+    showMessage("Failed to map course: " + err.message, "error");
+    
   }
+}
+
+function showMessage(msg, type = "info") {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  const icon = type === "success" ? "✔" : type === "error" ? "✖" : "ℹ";
+  toast.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = "fadeOut 0.3s ease forwards";
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }

@@ -132,7 +132,7 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     self._send_error_json("Course not found on watch", 404)
                     return
                 
-                course_path = device.mount_point / course.location / filename
+                course_path = course.full_path
                 if not course_path.exists():
                     self._send_error_json("File missing from watch storage", 404)
                     return
@@ -158,28 +158,6 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                             points.append([pt.lat, pt.lon])
                 
                 self._send_json({"success": True, "points": points})
-            except Exception as e:
-                self._send_error_json(str(e), 500)
-            return
-            
-            try:
-                manager = GarminDeviceManager(device=device)
-                courses = manager.list_courses()
-                course = next((c for c in courses if c.filename == filename), None)
-                if not course:
-                    self._send_error_json("Course not found on watch", 404)
-                    return
-                
-                course_path = device.mount_point / course.location / filename
-                if not course_path.exists():
-                    self._send_error_json("File missing from watch storage", 404)
-                    return
-                
-                # Serve the file content
-                content = course_path.read_bytes()
-                mime_type = "application/gpx+xml" if filename.lower().endswith(".gpx") else "application/octet-stream"
-                self._set_headers(200, mime_type)
-                self.wfile.write(content)
             except Exception as e:
                 self._send_error_json(str(e), 500)
             return

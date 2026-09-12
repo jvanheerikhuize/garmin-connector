@@ -8,7 +8,6 @@ from typing import Optional
 
 from .fit_encoder import FitCourseEncoder, CourseData, Sport
 from .gpx_parser import parse_gpx_file, parse_gpx_string
-from .elevation import enrich_course_elevation
 
 
 def convert_gpx_to_fit(
@@ -41,8 +40,6 @@ def convert_gpx_to_fit(
         out_path = Path(output_fit_path)
 
     course_data = parse_gpx_file(in_path, course_name=course_name, sport=sport)
-    if enrich_dem:
-        course_data = enrich_course_elevation(course_data)
 
     encoder = FitCourseEncoder(course_data)
     fit_bytes = encoder.encode()

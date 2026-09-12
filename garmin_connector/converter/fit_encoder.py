@@ -162,7 +162,7 @@ class FitCourseEncoder:
             self._build_field_def(3, 4, BASE_TYPE_UINT32Z),
             self._build_field_def(4, 4, BASE_TYPE_UINT32),
         ]
-        def_mesg = struct.pack("<BBBBH", 0x40 | local_num, 0, 0, MESG_NUM_FILE_ID, len(fields)) + b"".join(fields)
+        def_mesg = struct.pack("<BBBHB", 0x40 | local_num, 0, 0, MESG_NUM_FILE_ID, len(fields)) + b"".join(fields)
         # Data: header(1B), type=6(1B), manufacturer=1(2B), product=0(2B), serial_num=0(4B), time_created=self.epoch_time(4B)
         data_mesg = struct.pack("<BBHHII", local_num, 6, 1, 0, 0, self.epoch_time)
         return def_mesg, data_mesg
@@ -175,7 +175,7 @@ class FitCourseEncoder:
             self._build_field_def(4, 1, BASE_TYPE_ENUM),
             self._build_field_def(5, name_len, BASE_TYPE_STRING),
         ]
-        def_mesg = struct.pack("<BBBBH", 0x40 | local_num, 0, 0, MESG_NUM_COURSE, len(fields)) + b"".join(fields)
+        def_mesg = struct.pack("<BBBHB", 0x40 | local_num, 0, 0, MESG_NUM_COURSE, len(fields)) + b"".join(fields)
         data_mesg = struct.pack(f"<BB{name_len}s", local_num, int(self.course.sport), name_bytes)
         return def_mesg, data_mesg
 
@@ -197,7 +197,7 @@ class FitCourseEncoder:
             self._build_field_def(21, 2, BASE_TYPE_UINT16),
             self._build_field_def(22, 2, BASE_TYPE_UINT16),
         ]
-        def_mesg = struct.pack("<BBBBH", 0x40 | local_num, 0, 0, MESG_NUM_LAP, len(fields)) + b"".join(fields)
+        def_mesg = struct.pack("<BBBHB", 0x40 | local_num, 0, 0, MESG_NUM_LAP, len(fields)) + b"".join(fields)
 
         first_pt = self.course.points[0] if self.course.points else TrackPoint(0, 0)
         last_pt = self.course.points[-1] if self.course.points else first_pt
@@ -234,7 +234,7 @@ class FitCourseEncoder:
             self._build_field_def(2, 2, BASE_TYPE_UINT16),
             self._build_field_def(5, 4, BASE_TYPE_UINT32),
         ]
-        return struct.pack("<BBBBH", 0x40 | local_num, 0, 0, MESG_NUM_RECORD, len(fields)) + b"".join(fields)
+        return struct.pack("<BBBHB", 0x40 | local_num, 0, 0, MESG_NUM_RECORD, len(fields)) + b"".join(fields)
 
     def _build_record_data(self, pt: TrackPoint, cumulative_time: int, local_num: int = 3) -> bytes:
         alt_raw = 0xFFFF
@@ -265,7 +265,7 @@ class FitCourseEncoder:
             self._build_field_def(4, 1, BASE_TYPE_ENUM),
             self._build_field_def(5, name_len, BASE_TYPE_STRING),
         ]
-        return struct.pack("<BBBBH", 0x40 | local_num, 0, 0, MESG_NUM_COURSE_POINT, len(fields)) + b"".join(fields)
+        return struct.pack("<BBBHB", 0x40 | local_num, 0, 0, MESG_NUM_COURSE_POINT, len(fields)) + b"".join(fields)
 
     def _build_course_point_data(self, cp: CoursePointData, name_len: int = 16, local_num: int = 4) -> bytes:
         name_bytes = cp.name.encode("utf-8")[: name_len - 1] + b"\x00"

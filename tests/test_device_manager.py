@@ -47,6 +47,12 @@ class TestDeviceManager(unittest.TestCase):
             self.assertEqual(dest.suffix, ".fit")
             self.assertEqual(dest.parent, garmin_dir / "NEWFILES")
 
+            # Verify staged course
+            v_status = manager.verify_staged_course(dest.name)
+            self.assertTrue(v_status["verified"])
+            self.assertEqual(v_status["filename"], dest.name)
+            self.assertGreater(v_status["size_bytes"], 0)
+
             # List courses
             courses = manager.list_courses()
             self.assertEqual(len(courses), 1)
@@ -57,6 +63,11 @@ class TestDeviceManager(unittest.TestCase):
             deleted = manager.delete_course(dest.name)
             self.assertTrue(deleted)
             self.assertFalse(dest.exists())
+
+    def test_format_mtp_uri(self):
+        from garmin_connector.device.detector import format_mtp_uri
+        uri = format_mtp_uri("091e_51fb_test", "Internal Storage/GARMIN/NewFiles")
+        self.assertEqual(uri, "mtp://091e_51fb_test/Internal%20Storage/GARMIN/NewFiles")
 
 
 if __name__ == "__main__":

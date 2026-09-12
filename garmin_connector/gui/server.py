@@ -96,6 +96,16 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
             device = GarminDeviceDetector.get_first_device()
             raw_usb = GarminDeviceDetector.check_raw_usb()
             if device:
+                staged_count = 0
+                courses_count = 0
+                try:
+                    manager = GarminDeviceManager(device=device)
+                    courses = manager.list_courses()
+                    staged_count = sum(1 for c in courses if "NEWFILES" in c.location.upper())
+                    courses_count = sum(1 for c in courses if "COURSES" in c.location.upper())
+                except Exception:
+                    pass
+
                 self._send_json({
                     "connected": True,
                     "model_name": device.model_name,
@@ -105,6 +115,10 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     "mount_point": str(device.mount_point),
                     "garmin_dir": str(device.garmin_dir),
                     "is_mtp": device.is_mtp,
+                    "gio_uri": device.gio_uri,
+                    "gio_newfiles_uri": device.gio_newfiles_uri,
+                    "staged_count": staged_count,
+                    "courses_count": courses_count,
                     "raw_usb": raw_usb,
                 })
             else:
@@ -372,22 +386,17 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
 
                     dest = manager.sideload_route(src_file, sport=sport_enum, course_name=course_name)
 
-                GlobalWatcherState.log(f"Sideloaded '{file_name}' to {device.model_name}")
+                # Verify staged presence on watch
+                verify_info = manager.verify_staged_course(dest.name)
+                GlobalWatcherState.log(f"Sideloaded '{file_name}' -> '{dest.name}' to {device.model_name}")
                 self._send_json({
                     "success": True,
                     "filename": dest.name,
-                    "message": f"Successfully sideloaded to {device.model_name}! Unplug USB to sync.",
+                    "verified": verify_info.get("verified", False),
+                    "size_bytes": verify_info.get("size_bytes"),
+                    "location": "GARMIN/NewFiles",
+                    "message": f"Successfully sideloaded '{dest.name}' to {device.model_name}! Unplug USB to sync.",
                 })
-            except OSError as e:
-                if e.errno == 95 or "Operation not supported" in str(e):
-                    self._send_error_json(
-                        "Watch USB storage is in MTP mode (Linux GVFS FUSE read-only). "
-                        "To write directly: Tap 'Yes' or switch watch USB mode to 'Mass Storage' (Settings > System > USB Mode), "
-                        "or click 'Download .FIT' to save the compiled course file!",
-                        status=409
-                    )
-                else:
-                    self._send_error_json(f"Sideload failed: {e}", 500)
             except Exception as e:
                 self._send_error_json(f"Sideload failed: {e}", 500)
             return
@@ -463,18 +472,75 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
 
                 elif cmd == "probe":
                     command_str = "garmin-connector probe"
-                    out_lines.append("[*] Probing connected Garmin device directly via USB MTP...")
-                    from ..device.mtp_client import GarminMTPClient
-                    with GarminMTPClient() as mtp:
-                        probe_data = mtp.probe_device()
-                        out_lines.append(f"[+] Direct USB MTP: Online ({probe_data['vendor_id']}:{probe_data['product_id']})")
-                        out_lines.append(f"[+] Storages found: {probe_data['storages']}")
-                        out_lines.append(f"[+] GARMIN directory: {'Found' if probe_data['garmin_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] NEWFILES directory: {'Found' if probe_data['newfiles_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] COURSES directory: {'Found' if probe_data['courses_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] Courses on watch: {probe_data['courses_count']}")
-                        out_lines.append(f"[+] Staged files pending sync: {probe_data['staged_newfiles_count']}")
-                        result_payload = probe_data
+                    out_lines.append("[*] Probing connected Garmin device via Filesystem & MTP...")
+                    devices = GarminDeviceDetector.detect_devices(args.get("mount"))
+                    if devices:
+                        dev = devices[0]
+                        out_lines.append(f"[+] Watch Detected: {dev.model_name}")
+                        out_lines.append(f"    Unit ID: {dev.unit_id} | Firmware: {dev.software_version}")
+                        out_lines.append(f"    Mount Point: {dev.mount_point}")
+                        out_lines.append(f"    Mode: {'MTP (GNOME GVFS)' if dev.is_mtp else 'USB Mass Storage'}")
+                        if dev.gio_newfiles_uri:
+                            out_lines.append(f"    GIO Ingest URI: {dev.gio_newfiles_uri}")
+
+                        manager = GarminDeviceManager(device=dev)
+                        courses = manager.list_courses()
+                        staged = [c for c in courses if "NEWFILES" in c.location.upper()]
+                        active = [c for c in courses if "COURSES" in c.location.upper()]
+                        out_lines.append(f"[+] Staged in GARMIN/NewFiles: {len(staged)} file(s)")
+                        for s in staged:
+                            out_lines.append(f"    * {s.filename} ({s.size_bytes} B)")
+                        out_lines.append(f"[+] Installed in GARMIN/Courses: {len(active)} course(s)")
+                        result_payload = {
+                            "device": dev.model_name,
+                            "staged_count": len(staged),
+                            "staged_files": [s.filename for s in staged],
+                            "courses_count": len(active),
+                        }
+                    else:
+                        out_lines.append("[-] No Garmin watch detected.")
+
+                elif cmd == "test_watch":
+                    command_str = "garmin-connector test-watch"
+                    out_lines.append("[*] Executing autonomous watch functional smoke test...")
+                    from ..converter.fit_encoder import FitCourseEncoder, CourseData, TrackPoint
+                    from datetime import datetime, timezone
+
+                    manager = GarminDeviceManager(custom_mount=args.get("mount"))
+                    out_lines.append(f"[+] Target Watch: {manager.device.model_name} (Unit ID: {manager.device.unit_id})")
+
+                    course_data = CourseData(
+                        name="SelfTest",
+                        sport=Sport.CYCLING,
+                        points=[
+                            TrackPoint(lat=50.2500, lon=6.1000, elevation=450.0, distance=0.0, timestamp=datetime.now(timezone.utc)),
+                            TrackPoint(lat=50.2510, lon=6.1010, elevation=455.0, distance=100.0, timestamp=datetime.now(timezone.utc)),
+                            TrackPoint(lat=50.2520, lon=6.1020, elevation=460.0, distance=200.0, timestamp=datetime.now(timezone.utc)),
+                        ],
+                        total_distance=200.0,
+                        total_ascent=10.0,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    encoder = FitCourseEncoder(course=course_data)
+                    fit_bytes = encoder.encode()
+
+                    test_filename = "selftest_route.fit"
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        tmp_fit = Path(tmp_dir) / test_filename
+                        tmp_fit.write_bytes(fit_bytes)
+                        dest = manager.sideload_route(tmp_fit)
+                        out_lines.append(f"[+] Staged {len(fit_bytes)}B test course -> {dest.name}")
+
+                        status = manager.verify_staged_course(test_filename)
+                        if status.get("verified"):
+                            out_lines.append(f"[✔] Verified staged file on watch: {status['filename']} ({status['size_bytes']} bytes)")
+                            cleaned = manager.delete_course(test_filename)
+                            out_lines.append(f"[✔] Test cleanup: {'Removed' if cleaned else 'Not removed'}")
+                            out_lines.append("[✔] Watch functional smoke test PASSED 100%!")
+                            result_payload = {"passed": True, "size_bytes": status["size_bytes"]}
+                        else:
+                            out_lines.append(f"[✖] Verification failed: {test_filename} was not found on watch!")
+                            result_payload = {"passed": False}
 
                 elif cmd == "convert":
                     file_path = args.get("file", "/home/jerry/Desktop/ovelo-unterwegs-im-oberen-ourtal.gpx")

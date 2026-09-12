@@ -240,56 +240,134 @@ def cmd_serve(args):
 
 
 def cmd_probe(args):
-    """Directly probes the connected Garmin watch via USB MTP and filesystem."""
-    from .device.mtp_client import GarminMTPClient
-    print_info("Probing connected Garmin device directly...")
+    """Directly probes the connected Garmin watch via filesystem, GIO MTP, and USB."""
+    print_info("Probing connected Garmin device...")
 
-    # 1. Hardware probe via direct MTP client
+    fs_devices = GarminDeviceDetector.detect_devices(args.mount)
+    if not fs_devices:
+        print_error("No Garmin device detected via filesystem or MTP mounts.")
+        return
+
+    dev = fs_devices[0]
+    manager = GarminDeviceManager(device=dev)
+    courses = manager.list_courses()
+    staged = [c for c in courses if "NEWFILES" in c.location.upper()]
+    active = [c for c in courses if "COURSES" in c.location.upper()]
+
+    # Hardware probe via direct MTP client if possible
     mtp_result = None
     try:
+        from .device.mtp_client import GarminMTPClient
         with GarminMTPClient() as mtp:
             mtp_result = mtp.probe_device()
     except Exception as e:
-        print_info(f"Direct USB MTP probe note: {e}")
-
-    # 2. Filesystem probe
-    fs_devices = GarminDeviceDetector.detect_devices(args.mount)
+        mtp_note = f"MTP In-Use ({e})"
+    else:
+        mtp_note = "Online"
 
     if console:
-        table = Table(title="Garmin Watch Functional Probe Results")
+        table = Table(title=f"Garmin Watch Functional Probe: {dev.model_name}")
         table.add_column("Parameter", style="bold cyan")
         table.add_column("Status / Value")
 
-        if mtp_result:
-            table.add_row("Direct USB MTP", "[bold green]Online[/bold green]")
-            table.add_row("Vendor / Product ID", f"{mtp_result['vendor_id']}:{mtp_result['product_id']}")
-            table.add_row("Garmin Folder", "[green]Present[/green]" if mtp_result["garmin_folder_found"] else "[red]Missing[/red]")
-            table.add_row("NewFiles Folder", "[green]Present (Ingest ready)[/green]" if mtp_result["newfiles_folder_found"] else "[red]Missing[/red]")
-            table.add_row("Courses Folder", "[green]Present[/green]" if mtp_result["courses_folder_found"] else "[red]Missing[/red]")
-            table.add_row("Courses On Watch", str(mtp_result["courses_count"]))
-            table.add_row("Staged Files Pending", str(mtp_result["staged_newfiles_count"]))
-
-        if fs_devices:
-            dev = fs_devices[0]
-            table.add_row("Model Name", dev.model_name)
-            table.add_row("Unit ID", dev.unit_id or "Unknown")
-            table.add_row("Firmware Version", dev.software_version or "Unknown")
-            table.add_row("Mount Point", str(dev.mount_point))
+        table.add_row("Model Name", dev.model_name)
+        table.add_row("Unit ID", dev.unit_id or "Unknown")
+        table.add_row("Firmware Version", dev.software_version or "Unknown")
+        table.add_row("Mount Point", str(dev.mount_point))
+        table.add_row("GARMIN Directory", str(dev.garmin_dir))
+        table.add_row("Transport Mode", "MTP (GNOME GVFS)" if dev.is_mtp else "USB Mass Storage")
+        if dev.gio_newfiles_uri:
+            table.add_row("GIO Ingest URI", dev.gio_newfiles_uri)
+        table.add_row("Direct USB MTP", mtp_note)
+        table.add_row("Staged in NewFiles", f"[bold yellow]{len(staged)}[/bold yellow] file(s)")
+        table.add_row("Installed Courses", f"[bold green]{len(active)}[/bold green] course(s)")
 
         console.print(table)
+
+        if staged:
+            staged_table = Table(title="Files Staged in GARMIN/NewFiles (Pending Watch Sync)")
+            staged_table.add_column("Filename", style="bold yellow")
+            staged_table.add_column("Size", justify="right")
+            staged_table.add_column("Modified", style="dim")
+            for s in staged:
+                staged_table.add_row(s.filename, f"{s.size_bytes} B", s.modified_at.strftime("%Y-%m-%d %H:%M"))
+            console.print(staged_table)
     else:
-        print("=== Garmin Watch Probe ===")
-        if mtp_result:
-            print(f"USB MTP: Online ({mtp_result['vendor_id']}:{mtp_result['product_id']})")
-            print(f"GARMIN folder: {mtp_result['garmin_folder_found']}")
-            print(f"Courses on watch: {mtp_result['courses_count']}")
-            print(f"Staged files: {mtp_result['staged_newfiles_count']}")
-        if fs_devices:
-            dev = fs_devices[0]
-            print(f"Model: {dev.model_name} (Unit ID: {dev.unit_id})")
-            print(f"Mount: {dev.mount_point}")
+        print(f"=== Watch Probe: {dev.model_name} ===")
+        print(f"Unit ID: {dev.unit_id} | Firmware: {dev.software_version}")
+        print(f"Mount: {dev.mount_point}")
+        print(f"Ingest URI: {dev.gio_newfiles_uri}")
+        print(f"Staged in NewFiles: {len(staged)}")
+        print(f"Courses in Courses: {len(active)}")
 
     print_success("Watch probe completed successfully.")
+
+
+def cmd_test_watch(args):
+    """Performs an autonomous end-to-end functional smoke test against the connected Garmin watch."""
+    print_info("Starting autonomous Garmin watch functional smoke test...")
+
+    # 1. Connect & detect
+    try:
+        manager = GarminDeviceManager(custom_mount=args.mount)
+        print_success(f"Detected watch: {manager.device.model_name} (Unit ID: {manager.device.unit_id})")
+    except Exception as e:
+        print_error(f"Cannot connect to watch: {e}")
+        return
+
+    # 2. Synthesize a minimal valid FIT course
+    import tempfile
+    from datetime import datetime, timezone
+    from .converter.fit_encoder import FitCourseEncoder, CourseData, TrackPoint, Sport
+
+    course_data = CourseData(
+        name="SelfTest",
+        sport=Sport.CYCLING,
+        points=[
+            TrackPoint(lat=50.2500, lon=6.1000, elevation=450.0, distance=0.0, timestamp=datetime.now(timezone.utc)),
+            TrackPoint(lat=50.2510, lon=6.1010, elevation=455.0, distance=100.0, timestamp=datetime.now(timezone.utc)),
+            TrackPoint(lat=50.2520, lon=6.1020, elevation=460.0, distance=200.0, timestamp=datetime.now(timezone.utc)),
+        ],
+        total_distance=200.0,
+        total_ascent=10.0,
+        created_at=datetime.now(timezone.utc),
+    )
+    encoder = FitCourseEncoder(course=course_data)
+    fit_bytes = encoder.encode()
+
+    test_filename = "selftest_route.fit"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_fit = Path(tmp_dir) / test_filename
+        tmp_fit.write_bytes(fit_bytes)
+
+        # 3. Sideload to watch
+        print_info(f"Sideloading test course ({len(fit_bytes)} bytes) to watch's GARMIN/NewFiles...")
+        try:
+            dest = manager.sideload_route(tmp_fit)
+            print_success(f"File staged at: {dest}")
+        except Exception as e:
+            print_error(f"Sideload failed: {e}")
+            return
+
+        # 4. Probe and verify staged status on watch
+        verify_status = manager.verify_staged_course(test_filename)
+        if verify_status.get("verified"):
+            print_success(f"Verified staged file on watch: {verify_status['filename']} ({verify_status['size_bytes']} bytes)")
+        else:
+            print_error(f"Verification failed: {test_filename} was not found in watch's NewFiles!")
+            return
+
+        # 5. Cleanup unless --keep
+        if not getattr(args, "keep", False):
+            cleaned = manager.delete_course(test_filename)
+            if cleaned:
+                print_success("Autonomous cleanup: Test course removed from watch.")
+            else:
+                print_info("Cleanup notice: Test course could not be unlinked automatically.")
+        else:
+            print_info("Flag --keep set: Left test course on watch for manual inspection.")
+
+    print_success("Watch functional smoke test PASSED 100%!")
 
 
 def cmd_gui(args):
@@ -319,15 +397,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_detect.set_defaults(func=cmd_detect)
 
     # probe
-    p_probe = subparsers.add_parser("probe", help="Directly probe and functionally test connected watch via USB")
+    p_probe = subparsers.add_parser("probe", help="Directly probe and functionally test connected watch via USB/MTP")
     p_probe.set_defaults(func=cmd_probe)
+
+    # test-watch
+    p_test = subparsers.add_parser("test-watch", help="Run automated functional smoke test against connected watch")
+    p_test.add_argument("--keep", "-k", action="store_true", help="Keep test course on watch instead of cleaning up")
+    p_test.set_defaults(func=cmd_test_watch)
 
     # list
     p_list = subparsers.add_parser("list", aliases=["ls"], help="List stored courses on watch")
     p_list.set_defaults(func=cmd_list)
 
-    # push
-    p_push = subparsers.add_parser("push", help="Convert & sideload GPX/FIT routes to watch")
+    # push / sideload
+    p_push = subparsers.add_parser("push", aliases=["sideload"], help="Convert & sideload GPX/FIT routes to watch")
     p_push.add_argument("files", nargs="+", help="GPX or FIT route files to sideload")
     p_push.add_argument("--sport", "-s", default="cycling", choices=["cycling", "hiking", "walking", "running"], help="Sport type")
     p_push.add_argument("--name", "-n", help="Custom course name (up to 15 chars)")

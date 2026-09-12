@@ -5,10 +5,30 @@ Detects USB Mass Storage and MTP (GVFS) mounts and parses device XML descriptors
 
 from __future__ import annotations
 import os
+import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
+
+
+# Ensure GIO loads GVFS MTP modules on Linux
+for _gio_cand in [
+    "/usr/lib/x86_64-linux-gnu/gio/modules",
+    "/usr/lib/aarch64-linux-gnu/gio/modules",
+    "/usr/lib/gio/modules",
+    "/usr/lib64/gio/modules",
+]:
+    if os.path.exists(os.path.join(_gio_cand, "libgvfsdbus.so")):
+        os.environ["GIO_MODULE_DIR"] = _gio_cand
+        break
+
+
+def format_mtp_uri(host: str, rel_path: Path | str) -> str:
+    """Formats a host and relative path into a properly percent-encoded GIO MTP URI."""
+    parts = Path(rel_path).parts if isinstance(rel_path, str) else rel_path.parts
+    quoted = [urllib.parse.quote(p) for p in parts]
+    return f"mtp://{host}/" + "/".join(quoted)
 
 
 @dataclass
@@ -23,6 +43,9 @@ class GarminDeviceInfo:
     courses_dir: Optional[Path] = None
     activities_dir: Optional[Path] = None
     is_mtp: bool = False
+    gio_uri: Optional[str] = None
+    gio_newfiles_uri: Optional[str] = None
+    gio_courses_uri: Optional[str] = None
 
 
 class GarminDeviceDetector:
@@ -154,6 +177,32 @@ class GarminDeviceDetector:
                 courses_dir = garmin_dir / "COURSES"
 
             is_mtp = "mtp" in str(cand).lower() or "gvfs" in str(cand).lower()
+            gio_uri = None
+            gio_newfiles_uri = None
+            gio_courses_uri = None
+
+            if is_mtp:
+                host = None
+                mount_root = None
+                for idx, p in enumerate(cand.parts):
+                    if "mtp:host=" in p:
+                        host = p.split("mtp:host=", 1)[1]
+                        mount_root = Path(*cand.parts[:idx + 1])
+                        break
+                if host and mount_root:
+                    try:
+                        rel_garmin = garmin_dir.relative_to(mount_root)
+                        gio_uri = format_mtp_uri(host, rel_garmin)
+                        if newfiles_dir:
+                            rel_newfiles = newfiles_dir.relative_to(mount_root)
+                            gio_newfiles_uri = format_mtp_uri(host, rel_newfiles)
+                        if courses_dir:
+                            rel_courses = courses_dir.relative_to(mount_root)
+                            gio_courses_uri = format_mtp_uri(host, rel_courses)
+                    except Exception:
+                        gio_uri = format_mtp_uri(host, "Internal Storage/GARMIN")
+                        gio_newfiles_uri = format_mtp_uri(host, "Internal Storage/GARMIN/NewFiles")
+                        gio_courses_uri = format_mtp_uri(host, "Internal Storage/GARMIN/Courses")
 
             devices.append(
                 GarminDeviceInfo(
@@ -167,6 +216,9 @@ class GarminDeviceDetector:
                     courses_dir=courses_dir,
                     activities_dir=activities_dir,
                     is_mtp=is_mtp,
+                    gio_uri=gio_uri,
+                    gio_newfiles_uri=gio_newfiles_uri,
+                    gio_courses_uri=gio_courses_uri,
                 )
             )
 

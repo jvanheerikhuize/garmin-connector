@@ -1,15 +1,10 @@
 """
-Embedded HTTP Server for the Garmin Connector GUI.
-Built on Python standard library http.server for zero-dependency execution.
+Embedded HTTP Server for the Garmin Connector GUI (Lean MVP).
 """
 
 from __future__ import annotations
 import json
 import mimetypes
-import os
-import re
-import tempfile
-import threading
 import urllib.parse
 from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -19,31 +14,16 @@ from typing import Optional
 from ..converter.fit_encoder import Sport
 from ..converter.gpx_parser import parse_gpx_string
 from ..converter.gpx_to_fit import convert_gpx_to_fit
-from ..converter.elevation import enrich_course_elevation
 from ..device.detector import GarminDeviceDetector
 from ..device.manager import GarminDeviceManager
-from ..service.watcher import DirectoryWatcher
+import fitparse
+import io
+
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-class GlobalWatcherState:
-    """Thread-safe watcher management for the GUI."""
-    watcher: Optional[DirectoryWatcher] = None
-    watcher_thread: Optional[threading.Thread] = None
-    is_running: bool = False
-    watch_path: str = str(Path.home() / "Downloads")
-    recent_logs: list[str] = []
-
-    @classmethod
-    def log(cls, msg: str):
-        cls.recent_logs.append(msg)
-        if len(cls.recent_logs) > 50:
-            cls.recent_logs.pop(0)
-
-
 class GarminGUIRequestHandler(BaseHTTPRequestHandler):
-    """Custom HTTP Request Handler supporting REST API & Static Files."""
 
     def _set_headers(self, status: int = 200, content_type: str = "application/json"):
         self.send_response(status)
@@ -61,8 +41,8 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
         self._set_headers(status, "application/json")
         self.wfile.write(body)
 
-    def _send_error_json(self, message: str, status: int = 400):
-        self._send_json({"error": message, "success": False}, status=status)
+    def _send_error_json(self, msg: str, status: int = 400):
+        self._send_json({"success": False, "error": msg}, status)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -86,35 +66,33 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 mime_type, _ = mimetypes.guess_type(str(asset_path))
                 self._set_headers(200, mime_type or "application/octet-stream")
                 self.wfile.write(asset_path.read_bytes())
-                return
             else:
                 self._send_error_json("Asset not found", 404)
-                return
+            return
 
-        # API Routes
+        # API: Device Status
         if path == "/api/device":
             device = GarminDeviceDetector.get_first_device()
-            raw_usb = GarminDeviceDetector.check_raw_usb()
             if device:
+                manager = GarminDeviceManager(device=device)
+                courses = manager.list_courses()
+                staged_count = sum(1 for c in courses if "NEWFILES" in c.location.upper())
+                courses_count = sum(1 for c in courses if "COURSES" in c.location.upper())
+
                 self._send_json({
                     "connected": True,
                     "model_name": device.model_name,
                     "unit_id": device.unit_id,
-                    "software_version": device.software_version,
-                    "part_number": device.part_number,
                     "mount_point": str(device.mount_point),
-                    "garmin_dir": str(device.garmin_dir),
                     "is_mtp": device.is_mtp,
-                    "raw_usb": raw_usb,
+                    "staged_count": staged_count,
+                    "courses_count": courses_count,
                 })
             else:
-                self._send_json({
-                    "connected": False,
-                    "model_name": None,
-                    "raw_usb": raw_usb,
-                })
+                self._send_json({"connected": False, "model_name": None})
             return
 
+        # API: List Courses
         if path == "/api/courses":
             device = GarminDeviceDetector.get_first_device()
             if not device:
@@ -124,139 +102,64 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
             try:
                 manager = GarminDeviceManager(device=device)
                 courses = manager.list_courses()
-                self._send_json({
-                    "connected": True,
-                    "device": device.model_name,
-                    "courses": [
-                        {
-                            "filename": c.filename,
-                            "size_bytes": c.size_bytes,
-                            "modified_at": c.modified_at.isoformat(),
-                            "location": c.location,
-                        }
-                        for c in courses
-                    ],
-                })
+                c_list = [
+                    {
+                        "filename": c.filename,
+                        "size_bytes": c.size_bytes,
+                        "location": c.location,
+                        "modified_at": c.modified_at.isoformat(),
+                    }
+                    for c in courses
+                ]
+                self._send_json({"connected": True, "courses": c_list})
             except Exception as e:
                 self._send_error_json(str(e), 500)
             return
 
-        if path == "/api/diagnostics":
+                # API: Fetch Course for mapping (New MVP feature)
+        if path.startswith("/api/fetch-course/"):
+            filename = urllib.parse.unquote(path[len("/api/fetch-course/"):])
             device = GarminDeviceDetector.get_first_device()
-            raw_usb = GarminDeviceDetector.check_raw_usb()
+            if not device:
+                self._send_error_json("No Garmin device connected", 503)
+                return
             
-            # Run quick self-tests
-            tests = []
-            
-            # 1. GPX Parser Test
             try:
-                sample_gpx = """<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>
-                <trkpt lat="50.1" lon="6.1"><ele>400</ele></trkpt>
-                <trkpt lat="50.2" lon="6.2"><ele>450</ele></trkpt>
-                </trkseg></trk></gpx>"""
-                parsed = parse_gpx_string(sample_gpx, "Test")
-                tests.append({
-                    "name": "GPX Parsing Engine",
-                    "status": "pass",
-                    "detail": f"Parsed {len(parsed.points)} points, {parsed.total_distance:.0f}m"
-                })
+                manager = GarminDeviceManager(device=device)
+                courses = manager.list_courses()
+                course = next((c for c in courses if c.filename == filename), None)
+                if not course:
+                    self._send_error_json("Course not found on watch", 404)
+                    return
+                
+                course_path = course.full_path
+                if not course_path.exists():
+                    self._send_error_json("File missing from watch storage", 404)
+                    return
+                
+                points = []
+                if filename.lower().endswith(".fit"):
+                    fitfile = fitparse.FitFile(course_path.read_bytes())
+                    for record in fitfile.get_messages('record'):
+                        lat = None
+                        lon = None
+                        for data in record:
+                            if data.name == 'position_lat' and data.value is not None:
+                                lat = data.value * (180.0 / (2**31))
+                            elif data.name == 'position_long' and data.value is not None:
+                                lon = data.value * (180.0 / (2**31))
+                        if lat is not None and lon is not None:
+                            points.append([lat, lon])
+                elif filename.lower().endswith(".gpx"):
+                    from ..converter.gpx_parser import parse_gpx_file
+                    cdata = parse_gpx_file(course_path)
+                    for pt in cdata.points:
+                        if pt.lat is not None and pt.lon is not None:
+                            points.append([pt.lat, pt.lon])
+                
+                self._send_json({"success": True, "points": points})
             except Exception as e:
-                tests.append({"name": "GPX Parsing Engine", "status": "fail", "detail": str(e)})
-
-            # 2. FIT Encoder Test
-            try:
-                from ..converter.fit_encoder import FitCourseEncoder
-                encoder = FitCourseEncoder(parsed)
-                fit_bytes = encoder.encode()
-                tests.append({
-                    "name": "FIT 2.0 Binary Encoder & CRC-16",
-                    "status": "pass",
-                    "detail": f"Generated valid {len(fit_bytes)} bytes FIT course"
-                })
-            except Exception as e:
-                tests.append({"name": "FIT 2.0 Binary Encoder & CRC-16", "status": "fail", "detail": str(e)})
-
-            # 3. Hardware USB Bus Check
-            if raw_usb.get("detected"):
-                tests.append({
-                    "name": "Garmin USB Hardware Bus",
-                    "status": "pass",
-                    "detail": f"Device {raw_usb.get('vid')}:{raw_usb.get('pid')} connected"
-                })
-            else:
-                tests.append({
-                    "name": "Garmin USB Hardware Bus",
-                    "status": "warn",
-                    "detail": "No Garmin device on raw USB bus"
-                })
-
-            # 4. Storage / MTP Mount Check
-            if device:
-                tests.append({
-                    "name": "Garmin Storage Filesystem",
-                    "status": "pass",
-                    "detail": f"Accessible at {device.mount_point} ({device.model_name})"
-                })
-            else:
-                tests.append({
-                    "name": "Garmin Storage Filesystem",
-                    "status": "warn",
-                    "detail": "Storage not unlocked or mounted"
-                })
-
-            # 5. Direct USB MTP Probe Check
-            try:
-                from .device.mtp_client import GarminMTPClient
-                with GarminMTPClient() as mtp:
-                    probe = mtp.probe_device()
-                    tests.append({
-                        "name": "Direct USB MTP Protocol",
-                        "status": "pass",
-                        "detail": f"Online (Garmin: {probe['garmin_folder_found']}, NewFiles: {probe['newfiles_folder_found']}, Courses: {probe['courses_count']})"
-                    })
-            except Exception as e:
-                tests.append({
-                    "name": "Direct USB MTP Protocol",
-                    "status": "idle",
-                    "detail": f"Direct USB client idle ({e})"
-                })
-
-            # 6. Directory Watcher
-            tests.append({
-                "name": "Route Watcher Service",
-                "status": "pass" if GlobalWatcherState.is_running else "idle",
-                "detail": f"{'Running on ' + GlobalWatcherState.watch_path if GlobalWatcherState.is_running else 'Idle (Disabled)'}"
-            })
-
-            self._send_json({
-                "timestamp": __import__("datetime").datetime.now().isoformat(),
-                "tests": tests,
-                "device": {
-                    "connected": bool(device),
-                    "model": device.model_name if device else None,
-                    "unit_id": device.unit_id if device else None,
-                    "mount_point": str(device.mount_point) if device else None,
-                    "raw_usb": raw_usb
-                }
-            })
-            return
-
-        if path == "/api/probe":
-            try:
-                from .device.mtp_client import GarminMTPClient
-                with GarminMTPClient() as mtp:
-                    probe_data = mtp.probe_device()
-                    self._send_json({"success": True, "probe": probe_data})
-            except Exception as e:
-                self._send_json({"success": False, "error": str(e)}, 500)
-            return
-
-        if path == "/api/watcher/status":
-            self._send_json({
-                "is_running": GlobalWatcherState.is_running,
-                "watch_path": GlobalWatcherState.watch_path,
-                "logs": GlobalWatcherState.recent_logs[-15:],
-            })
+                self._send_error_json(str(e), 500)
             return
 
         self._send_error_json("Not found", 404)
@@ -264,308 +167,60 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length)
 
-        # 1. Preview Route (returns points, distances, elevations, course points)
-        if path == "/api/preview":
-            try:
-                data = json.loads(body.decode("utf-8"))
-                xml_str = data.get("gpx_content", "")
-                sport_name = data.get("sport", "cycling")
-                sport_enum = Sport.HIKING if sport_name == "hiking" else Sport.CYCLING
-                custom_name = data.get("name")
-
-                course = parse_gpx_string(xml_str, course_name=custom_name, sport=sport_enum)
-                # Automatically enrich with real DEM elevation if elevations are flat or missing
-                course = enrich_course_elevation(course)
-
-                # Sample points if > 1500 to keep UI ultra snappy
-                pts = course.points
-                step = max(1, len(pts) // 1500)
-                sampled_pts = pts[::step]
-                if pts and sampled_pts[-1] != pts[-1]:
-                    sampled_pts.append(pts[-1])
-
-                self._send_json({
-                    "success": True,
-                    "name": course.name,
-                    "sport": course.sport.name,
-                    "total_distance": course.total_distance,
-                    "total_ascent": course.total_ascent,
-                    "total_descent": course.total_descent,
-                    "points_count": len(course.points),
-                    "coordinates": [[pt.lat, pt.lon] for pt in sampled_pts],
-                    "elevations": [
-                        {
-                            "dist": round(pt.distance / 1000.0, 2),
-                            "ele": round(pt.elevation, 1) if pt.elevation is not None else None,
-                        }
-                        for pt in sampled_pts
-                    ],
-                    "course_points": [
-                        {
-                            "name": cp.name,
-                            "type": cp.point_type.name,
-                            "lat": cp.lat,
-                            "lon": cp.lon,
-                            "dist": round(cp.distance / 1000.0, 2),
-                        }
-                        for cp in course.course_points
-                    ],
-                })
-            except Exception as e:
-                self._send_error_json(f"Failed to parse GPX: {e}", 400)
-            return
-
-        # 1b. Direct Binary FIT Course Download
-        if path == "/api/convert/fit":
-            try:
-                data = json.loads(body.decode("utf-8"))
-                xml_str = data.get("gpx_content", "")
-                sport_name = data.get("sport", "cycling")
-                sport_enum = Sport.HIKING if sport_name == "hiking" else Sport.CYCLING
-                custom_name = data.get("name")
-
-                from ..converter.fit_encoder import FitCourseEncoder
-                course = parse_gpx_string(xml_str, course_name=custom_name, sport=sport_enum)
-                course = enrich_course_elevation(course)
-                encoder = FitCourseEncoder(course)
-                fit_bytes = encoder.encode()
-
-                safe_filename = re.sub(r'[^a-zA-Z0-9_\-]', '_', course.name or "course") + ".fit"
-                self.send_response(200)
-                self.send_header("Content-Type", "application/octet-stream")
-                self.send_header("Content-Disposition", f"attachment; filename=\"{safe_filename}\"")
-                self.send_header("Content-Length", str(len(fit_bytes)))
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(fit_bytes)
-            except Exception as e:
-                self._send_error_json(f"FIT Compilation failed: {e}", 400)
-            return
-
-        # 2. Sideload Route to Device
         if path == "/api/sideload":
-            try:
-                data = json.loads(body.decode("utf-8"))
-                file_content = data.get("content", "")
-                file_name = data.get("filename", "route.gpx")
-                sport_name = data.get("sport", "cycling")
-                course_name = data.get("name")
-                sport_enum = Sport.HIKING if sport_name == "hiking" else Sport.CYCLING
+            content_length = int(self.headers.get("Content-Length", 0))
+            if content_length == 0:
+                self._send_error_json("Empty request", 400)
+                return
 
-                device = GarminDeviceDetector.get_first_device()
-                if not device:
-                    self._send_error_json("No Garmin device connected via USB/MTP", 503)
+            body = self.rfile.read(content_length).decode("utf-8")
+            device = GarminDeviceDetector.get_first_device()
+            if not device:
+                self._send_error_json("No Garmin device connected", 503)
+                return
+
+            try:
+                payload = json.loads(body)
+                gpx_content = payload.get("gpx_content")
+                course_name = payload.get("course_name", "MVP_Course")
+                sport_str = payload.get("sport", "cycling")
+
+                if not gpx_content:
+                    self._send_error_json("Missing gpx_content", 400)
                     return
 
+                sport_enum = Sport.CYCLING
+                if sport_str == "hiking":
+                    sport_enum = Sport.HIKING
+                elif sport_str == "running":
+                    sport_enum = Sport.RUNNING
+
+                # Parse GPX
+                course_data = parse_gpx_string(gpx_content, course_name=course_name, sport=sport_enum)
+
+                # Write to temp file
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".fit", delete=False) as tmp_fit:
+                    from ..converter.fit_encoder import FitCourseEncoder
+                    encoder = FitCourseEncoder(course=course_data)
+                    fit_bytes = encoder.encode()
+                    tmp_fit.write(fit_bytes)
+                    tmp_fit_path = Path(tmp_fit.name)
+
+                # Sideload
                 manager = GarminDeviceManager(device=device)
+                dest = manager.sideload_route(tmp_fit_path)
+                tmp_fit_path.unlink()
 
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    src_file = Path(tmp_dir) / file_name
-                    if file_name.endswith(".fit") and isinstance(file_content, str):
-                        import base64
-                        src_file.write_bytes(base64.b64decode(file_content))
-                    else:
-                        src_file.write_text(file_content, encoding="utf-8")
-
-                    dest = manager.sideload_route(src_file, sport=sport_enum, course_name=course_name)
-
-                GlobalWatcherState.log(f"Sideloaded '{file_name}' to {device.model_name}")
                 self._send_json({
                     "success": True,
                     "filename": dest.name,
-                    "message": f"Successfully sideloaded to {device.model_name}! Unplug USB to sync.",
+                    "course_name": course_data.name,
+                    "distance_meters": course_data.total_distance,
                 })
-            except OSError as e:
-                if e.errno == 95 or "Operation not supported" in str(e):
-                    self._send_error_json(
-                        "Watch USB storage is in MTP mode (Linux GVFS FUSE read-only). "
-                        "To write directly: Tap 'Yes' or switch watch USB mode to 'Mass Storage' (Settings > System > USB Mode), "
-                        "or click 'Download .FIT' to save the compiled course file!",
-                        status=409
-                    )
-                else:
-                    self._send_error_json(f"Sideload failed: {e}", 500)
-            except Exception as e:
-                self._send_error_json(f"Sideload failed: {e}", 500)
-            return
-
-        # 3. Watcher Controls
-        if path == "/api/watcher/start":
-            try:
-                data = json.loads(body.decode("utf-8")) if body else {}
-                watch_dir = data.get("path", str(Path.home() / "Downloads"))
-                sport_str = data.get("sport", "cycling")
-                sport_enum = Sport.HIKING if sport_str == "hiking" else Sport.CYCLING
-
-                GlobalWatcherState.watch_path = watch_dir
-                GlobalWatcherState.is_running = True
-                GlobalWatcherState.log(f"Started monitoring: {watch_dir}")
-
-                def _run():
-                    watcher = DirectoryWatcher(
-                        watch_dir=watch_dir,
-                        sport=sport_enum,
-                        on_sideload_callback=lambda s, d: GlobalWatcherState.log(f"Auto-sideloaded: {s.name} -> {d.name}"),
-                    )
-                    while GlobalWatcherState.is_running:
-                        watcher.scan_once()
-                        import time
-                        time.sleep(2)
-
-                t = threading.Thread(target=_run, daemon=True)
-                t.start()
-                GlobalWatcherState.watcher_thread = t
-
-                self._send_json({"success": True, "is_running": True, "watch_path": watch_dir})
             except Exception as e:
                 self._send_error_json(str(e), 500)
-            return
-
-        if path == "/api/watcher/stop":
-            GlobalWatcherState.is_running = False
-            GlobalWatcherState.log("Stopped directory monitoring")
-            self._send_json({"success": True, "is_running": False})
-            return
-
-        # 4. Interactive CLI Command Execution Runner
-        if path == "/api/cli/execute":
-            import time
-            start_t = time.time()
-            try:
-                data = json.loads(body.decode("utf-8")) if body else {}
-                cmd = data.get("command", "")
-                args = data.get("args", {})
-
-                out_lines = []
-                command_str = f"garmin-connector {cmd}"
-                result_payload = {}
-
-                if cmd == "detect":
-                    command_str = "garmin-connector detect"
-                    out_lines.append("[*] Scanning for connected Garmin devices...")
-                    devices = GarminDeviceDetector.detect_devices(args.get("mount"))
-                    if devices:
-                        for d in devices:
-                            out_lines.append(f"[+] Found Device: {d.model_name}")
-                            out_lines.append(f"    Unit ID: {d.unit_id}")
-                            out_lines.append(f"    Software: {d.software_version}")
-                            out_lines.append(f"    Mount: {d.mount_point}")
-                            out_lines.append(f"    GARMIN: {d.garmin_dir}")
-                            out_lines.append(f"    NEWFILES: {d.newfiles_dir}")
-                            out_lines.append(f"    COURSES: {d.courses_dir}")
-                            out_lines.append(f"    MTP Active: {d.is_mtp}")
-                        result_payload["devices_count"] = len(devices)
-                    else:
-                        out_lines.append("[-] No Garmin storage device currently detected.")
-
-                elif cmd == "probe":
-                    command_str = "garmin-connector probe"
-                    out_lines.append("[*] Probing connected Garmin device directly via USB MTP...")
-                    from ..device.mtp_client import GarminMTPClient
-                    with GarminMTPClient() as mtp:
-                        probe_data = mtp.probe_device()
-                        out_lines.append(f"[+] Direct USB MTP: Online ({probe_data['vendor_id']}:{probe_data['product_id']})")
-                        out_lines.append(f"[+] Storages found: {probe_data['storages']}")
-                        out_lines.append(f"[+] GARMIN directory: {'Found' if probe_data['garmin_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] NEWFILES directory: {'Found' if probe_data['newfiles_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] COURSES directory: {'Found' if probe_data['courses_folder_found'] else 'Missing'}")
-                        out_lines.append(f"[+] Courses on watch: {probe_data['courses_count']}")
-                        out_lines.append(f"[+] Staged files pending sync: {probe_data['staged_newfiles_count']}")
-                        result_payload = probe_data
-
-                elif cmd == "convert":
-                    file_path = args.get("file", "/home/jerry/Desktop/ovelo-unterwegs-im-oberen-ourtal.gpx")
-                    sport_str = args.get("sport", "cycling")
-                    course_name = args.get("name", "ConvertedCourse")
-                    sport_enum = Sport.HIKING if sport_str == "hiking" else Sport.CYCLING
-                    command_str = f"garmin-connector convert {file_path} --sport {sport_str} --name \"{course_name}\""
-
-                    out_lines.append(f"[*] Converting GPX: '{file_path}'...")
-                    with tempfile.TemporaryDirectory() as tmp_dir:
-                        out_fit = Path(tmp_dir) / f"{Path(file_path).stem}.fit"
-                        dest_fit, cdata = convert_gpx_to_fit(
-                            gpx_path=file_path,
-                            output_fit_path=out_fit,
-                            course_name=course_name,
-                            sport=sport_enum,
-                        )
-                        fit_size = dest_fit.stat().st_size
-                        out_lines.append(f"[+] Successfully converted to FIT 2.0 binary ({fit_size} bytes / {fit_size/1024:.1f} KB)")
-                        out_lines.append(f"    Course Name: {cdata.name}")
-                        out_lines.append(f"    Distance: {cdata.total_distance/1000:.2f} km | Ascent: {cdata.total_ascent:.0f}m")
-                        out_lines.append(f"    Waypoints/Cues: {len(cdata.course_points)} | Trackpoints: {len(cdata.points)}")
-                        result_payload = {
-                            "name": cdata.name,
-                            "distance_km": round(cdata.total_distance / 1000.0, 2),
-                            "ascent_m": round(cdata.total_ascent),
-                            "fit_size_bytes": fit_size,
-                        }
-
-                elif cmd == "list":
-                    command_str = "garmin-connector list"
-                    out_lines.append("[*] Querying courses on watch...")
-                    manager = GarminDeviceManager(custom_mount=args.get("mount"))
-                    courses = manager.list_courses()
-                    out_lines.append(f"[+] Found {len(courses)} course file(s) on {manager.device.model_name}:")
-                    for c in courses:
-                        out_lines.append(f"    - {c.filename} ({c.size_bytes/1024:.1f} KB) [{c.location}]")
-                    result_payload["courses"] = [{"filename": c.filename, "size": c.size_bytes, "location": c.location} for c in courses]
-
-                elif cmd == "backup":
-                    dest_dir = args.get("dest", str(Path.home() / "courses_backup"))
-                    command_str = f"garmin-connector backup --dest \"{dest_dir}\""
-                    out_lines.append(f"[*] Backing up courses to '{dest_dir}'...")
-                    manager = GarminDeviceManager(custom_mount=args.get("mount"))
-                    backed_up = manager.backup_courses(dest_dir)
-                    out_lines.append(f"[+] Successfully backed up {len(backed_up)} course(s) to '{dest_dir}'")
-                    result_payload["backed_up_count"] = len(backed_up)
-
-                elif cmd == "test_suite":
-                    command_str = "python3 -m unittest discover -s tests"
-                    out_lines.append("[*] Executing unit & integration test suite...")
-                    import unittest
-                    import io
-                    loader = unittest.TestLoader()
-                    suite = loader.discover("tests")
-                    stream = io.StringIO()
-                    runner = unittest.TextTestRunner(stream=stream, verbosity=2)
-                    result = runner.run(suite)
-                    test_output = stream.getvalue()
-                    for line in test_output.splitlines():
-                        out_lines.append(line)
-                    out_lines.append(f"[+] Tests run: {result.testsRun}, Errors: {len(result.errors)}, Failures: {len(result.failures)}")
-                    result_payload = {
-                        "tests_run": result.testsRun,
-                        "errors": len(result.errors),
-                        "failures": len(result.failures),
-                        "was_successful": result.wasSuccessful()
-                    }
-
-                else:
-                    out_lines.append(f"[-] Unknown command '{cmd}'")
-
-                dur_ms = round((time.time() - start_t) * 1000, 1)
-                self._send_json({
-                    "success": True,
-                    "command": cmd,
-                    "command_str": command_str,
-                    "output": "\n".join(out_lines),
-                    "duration_ms": dur_ms,
-                    "data": result_payload,
-                })
-            except Exception as e:
-                dur_ms = round((time.time() - start_t) * 1000, 1)
-                self._send_json({
-                    "success": False,
-                    "command": data.get("command", ""),
-                    "command_str": f"garmin-connector {data.get('command', '')}",
-                    "output": f"[-] Error: {e}",
-                    "duration_ms": dur_ms,
-                    "error": str(e),
-                }, status=500)
             return
 
         self._send_error_json("Not found", 404)
@@ -584,7 +239,6 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
             manager = GarminDeviceManager(device=device)
             deleted = manager.delete_course(filename)
             if deleted:
-                GlobalWatcherState.log(f"Deleted '{filename}' from {device.model_name}")
                 self._send_json({"success": True, "filename": filename})
             else:
                 self._send_error_json(f"Course '{filename}' not found", 404)
@@ -596,9 +250,7 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
         # Quiet standard HTTP logs
         return
 
-
 def run_gui_server(host: str = "127.0.0.1", port: int = 8080) -> HTTPServer:
-    """Creates and starts the GUI HTTP server."""
     server_address = (host, port)
     httpd = HTTPServer(server_address, GarminGUIRequestHandler)
     return httpd

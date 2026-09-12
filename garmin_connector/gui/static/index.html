@@ -19,41 +19,32 @@
 
     <div class="main-content">
       <div class="sidebar">
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <h2>Sideload Route</h2>
+          </div>
+          <div id="dropZone" class="dropzone">
+            <p>Drop GPX here or click</p>
+            <input type="file" id="fileInput" accept=".gpx" style="display: none;" />
+          </div>
+        </div>
+
         <div class="card">
-          <h2>Courses on Watch</h2>
-          <button id="btnRefresh" class="btn btn-primary btn-small" onclick="fetchCourses()" disabled>Refresh List</button>
-          <table class="data-table">
-            <thead><tr><th>Filename</th><th>Size</th><th>Location</th><th>Action</th></tr></thead>
-            <tbody id="courseTableBody"><tr><td colspan="4">No courses loaded</td></tr></tbody>
-          </table>
+          <div class="card-header">
+            <h2>Courses on Watch</h2>
+            <button id="btnRefresh" class="btn btn-primary btn-small" onclick="fetchCourses()" disabled>Refresh</button>
+          </div>
+          <div id="courseTableBody" class="course-list">
+            <div class="empty-state">No courses loaded</div>
+          </div>
         </div>
       </div>
 
       <div class="maparea">
         <div class="card" style="flex: 1; display: flex; flex-direction: column;">
           <h2>Map Preview</h2>
-          <div id="map" style="flex: 1; border-radius: var(--radius-md);"></div>
+          <div id="map" style="flex: 1; border-radius: var(--radius-md); box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);"></div>
           <p id="mapInfo" style="margin-top: 12px; font-size: 0.9rem; color: var(--text-muted);">Select a course to preview</p>
-        </div>
-      </div>
-    </div>
-
-    <button id="btnIngest" class="btn btn-primary btn-large" style="position: fixed; bottom: 24px; right: 24px; z-index: 100;" disabled>+ Sideload Course</button>
-  </div>
-
-  <div id="ingestModal" class="modal-backdrop hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="modal-title">Sideload GPX Course</div>
-          <div class="modal-subtitle">Drop a GPX file or click to select</div>
-        </div>
-        <button class="btn btn-text modal-close" id="modalClose">✕</button>
-      </div>
-      <div class="modal-body">
-        <div id="dropZone" class="dropzone">
-          <p>Drop a GPX file here, or click to browse</p>
-          <input type="file" id="fileInput" accept=".gpx" style="display: none;" />
         </div>
       </div>
     </div>

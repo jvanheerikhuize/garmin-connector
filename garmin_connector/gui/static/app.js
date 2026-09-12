@@ -2,22 +2,18 @@ let map, trackLayer;
 
 document.addEventListener("DOMContentLoaded", () => {
   map = L.map('map').setView([50, 6], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }).addTo(map);
 
   checkDeviceStatus();
   setInterval(checkDeviceStatus, 3000);
 
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
-  const ingestModal = document.getElementById("ingestModal");
-  const btnIngest = document.getElementById("btnIngest");
-  const modalClose = document.getElementById("modalClose");
 
-  btnIngest.addEventListener("click", () => ingestModal.classList.remove("hidden"));
-  modalClose.addEventListener("click", () => ingestModal.classList.add("hidden"));
-  ingestModal.addEventListener("click", (e) => {
-    if (e.target === ingestModal) ingestModal.classList.add("hidden");
-  });
 
   const confirmModal = document.getElementById("confirmModal");
   const confirmModalClose = document.getElementById("confirmModalClose");
@@ -58,13 +54,14 @@ async function checkDeviceStatus() {
     const dot = document.getElementById("statusDot");
     const text = document.getElementById("deviceStatus");
     const btnRefresh = document.getElementById("btnRefresh");
-    const btnIngest = document.getElementById("btnIngest");
+    const dropZone = document.getElementById("dropZone");
 
     if (data.connected) {
       dot.classList.add("connected");
       text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
       btnRefresh.disabled = false;
-      btnIngest.disabled = false;
+      dropZone.style.opacity = "1";
+      dropZone.style.pointerEvents = "auto";
 
       const tbody = document.getElementById("courseTableBody");
       if (tbody.children.length === 1 && (tbody.innerText.includes("No courses") || tbody.innerText.includes("No device"))) {
@@ -74,8 +71,9 @@ async function checkDeviceStatus() {
       dot.classList.remove("connected");
       text.innerText = "No device connected. Please plug in your Garmin watch.";
       btnRefresh.disabled = true;
-      btnIngest.disabled = true;
-      document.getElementById("courseTableBody").innerHTML = '<tr><td colspan="4">No device connected</td></tr>';
+      dropZone.style.opacity = "0.5";
+      dropZone.style.pointerEvents = "none";
+      document.getElementById("courseTableBody").innerHTML = '<div class="empty-state">No device connected</div>';
     }
   } catch (e) {
     console.error("Failed to check device", e);
@@ -83,7 +81,9 @@ async function checkDeviceStatus() {
 }
 
 async function handleFileUpload(file) {
-  if (document.getElementById("btnIngest").disabled) return;
+  const dropZone = document.getElementById("dropZone");
+  if (dropZone.style.pointerEvents === "none") return;
+  
   if (!file.name.toLowerCase().endsWith(".gpx")) {
     showMessage("Only GPX files are supported.", "error");
     return;
@@ -100,7 +100,6 @@ async function handleFileUpload(file) {
       const data = await res.json();
       if (data.success) {
         showMessage("Successfully sideloaded!", "success");
-        document.getElementById("ingestModal").classList.add("hidden");
         fetchCourses();
       } else {
         showMessage("Failed to sideload: " + data.error, "error");
@@ -116,22 +115,24 @@ async function fetchCourses() {
   try {
     const res = await fetch("/api/courses");
     const data = await res.json();
-    const tbody = document.getElementById("courseTableBody");
+    const listBody = document.getElementById("courseTableBody");
     if (!data.courses || data.courses.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4">No courses on watch</td></tr>';
+      listBody.innerHTML = '<div class="empty-state">No courses on watch</div>';
       return;
     }
     
-    tbody.innerHTML = data.courses.map(c => `
-      <tr>
-        <td>${c.filename}</td>
-        <td>${Math.round(c.size_bytes / 1024)} KB</td>
-        <td>${c.location}</td>
-        <td>
-          <a onclick="mapCourse(\'${c.filename}\')">Map</a> | 
-          <a onclick="deleteCourse('${c.filename}')">Delete</a>
-        </td>
-      </tr>
+    listBody.innerHTML = data.courses.map(c => `
+      <div class="course-card">
+        <div class="course-icon">${c.filename.endsWith('.fit') ? '⚡' : '🗺️'}</div>
+        <div class="course-info">
+          <div class="course-name">${c.filename}</div>
+          <div class="course-meta">${Math.round(c.size_bytes / 1024)} KB &bull; ${c.location}</div>
+        </div>
+        <div class="course-actions">
+          <button class="btn btn-primary btn-small" onclick="mapCourse('${c.filename}')">Map</button>
+          <button class="btn btn-danger btn-small" onclick="deleteCourse('${c.filename}')">Del</button>
+        </div>
+      </div>
     `).join('');
   } catch (err) {
     console.error(err);
@@ -178,7 +179,12 @@ async function mapCourse(filename) {
     if (trackLayer) map.removeLayer(trackLayer);
     
     if (pts && pts.length > 0) {
-      trackLayer = L.polyline(pts, {color: '#f38ba8', weight: 4}).addTo(map);
+      trackLayer = L.polyline(pts, {
+        color: '#00f0ff', 
+        weight: 4, 
+        opacity: 0.8,
+        className: 'glowing-track'
+      }).addTo(map);
       map.fitBounds(trackLayer.getBounds());
       document.getElementById("mapInfo").innerText = `Previewing ${filename} (${pts.length} points)`;
     } else {

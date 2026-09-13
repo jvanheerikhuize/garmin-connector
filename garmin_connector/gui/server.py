@@ -199,19 +199,25 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 # Parse GPX
                 course_data = parse_gpx_string(gpx_content, course_name=course_name, sport=sport_enum)
 
-                # Write to temp file
+                # Write to temp file with proper name
                 import tempfile
-                with tempfile.NamedTemporaryFile(suffix=".fit", delete=False) as tmp_fit:
+                import re
+                
+                # Create a safe filename from the course name
+                safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', course_name)
+                if not safe_name:
+                    safe_name = "Course"
+                
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_fit_path = Path(tmp_dir) / f"{safe_name}.fit"
                     from ..converter.fit_encoder import FitCourseEncoder
                     encoder = FitCourseEncoder(course=course_data)
                     fit_bytes = encoder.encode()
-                    tmp_fit.write(fit_bytes)
-                    tmp_fit_path = Path(tmp_fit.name)
-
-                # Sideload
-                manager = GarminDeviceManager(device=device)
-                dest = manager.sideload_route(tmp_fit_path)
-                tmp_fit_path.unlink()
+                    tmp_fit_path.write_bytes(fit_bytes)
+                    
+                    # Sideload
+                    manager = GarminDeviceManager(device=device)
+                    dest = manager.sideload_route(tmp_fit_path)
 
                 self._send_json({
                     "success": True,

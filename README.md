@@ -1,6 +1,6 @@
-# Garmin Connector (`garmin-venu-x1`) (Lean MVP)
+# Garmin Connector (`garmin-venu-x1`)
 
-A lightweight MVP tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch.
+A lightweight, cross-platform MVP tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch, wrapped in a Cyberpunk Terminal UI.
 
 ## Features
 
@@ -8,6 +8,7 @@ A lightweight MVP tool to connect to your Garmin Venu (and other watches), view 
 - **Ingest GPX**: Drag and drop GPX files to auto-convert to FIT and sideload directly onto the watch.
 - **Course Manager**: List and delete existing `.fit` and `.gpx` files on the watch.
 - **Map Preview**: Select a GPX file stored on the watch to preview its path on an interactive Leaflet map.
+- **Cyberpunk Terminal Theme**: Fully styled with CRT scanlines, glowing phosphor text, and Nerd Font icons.
 
 ## Installation
 
@@ -15,6 +16,8 @@ A lightweight MVP tool to connect to your Garmin Venu (and other watches), view 
 cd ~/Repos/garmin-venu-x1
 uv pip install -e .
 ```
+
+*Note: For the best experience, it's recommended to use a [Nerd Font](https://www.nerdfonts.com/) (e.g. FiraCode Nerd Font, Hack Nerd Font, JetBrainsMono Nerd Font) installed on your system for the UI icons to render perfectly.*
 
 ## Usage
 

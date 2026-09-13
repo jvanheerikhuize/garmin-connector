@@ -126,7 +126,7 @@ async function fetchCourses() {
     
     listBody.innerHTML = data.courses.map(c => `
       <div class="course-card">
-        <div class="course-icon">${c.filename.endsWith('.fit') ? '⚡' : '🗺️'}</div>
+        <div class="course-icon">${c.filename.endsWith('.fit') ? '' : ''}</div>
         <div class="course-info">
           <div class="course-name">${c.filename}</div>
           <div class="course-meta">${Math.round(c.size_bytes / 1024)} KB &bull; ${c.location}</div>
@@ -204,7 +204,7 @@ function showMessage(msg, type = "info") {
   const container = document.getElementById("toastContainer");
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  const icon = type === "success" ? "✔" : type === "error" ? "✖" : "ℹ";
+  const icon = type === "success" ? "" : type === "error" ? "" : "";
   toast.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
   container.appendChild(toast);
   setTimeout(() => {

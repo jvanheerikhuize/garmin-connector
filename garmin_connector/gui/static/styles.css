@@ -20,8 +20,8 @@
   --radius-md: 0px;
   --radius-lg: 0px;
 
-  --font-mono: 'Courier New', Courier, monospace;
-  --font-sans: 'Courier New', Courier, monospace;
+  --font-mono: 'FiraCode Nerd Font', 'Hack Nerd Font', 'JetBrainsMono Nerd Font', 'Consolas', 'Courier New', monospace;
+  --font-sans: 'FiraCode Nerd Font', 'Hack Nerd Font', 'JetBrainsMono Nerd Font', 'Consolas', 'Courier New', monospace;
 }
 
 * {

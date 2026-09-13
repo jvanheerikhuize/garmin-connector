@@ -8,7 +8,7 @@ A lightweight, cross-platform MVP tool to connect to your Garmin Venu (and other
 - **Ingest GPX**: Drag and drop GPX files to auto-convert to FIT and sideload directly onto the watch.
 - **Course Manager**: List and delete existing `.fit` and `.gpx` files on the watch.
 - **Map Preview**: Select a GPX file stored on the watch to preview its path on an interactive Leaflet map.
-- **Cyberpunk Terminal Theme**: Fully styled with CRT scanlines, glowing phosphor text, and Nerd Font icons.
+- **CYBERCORE Design System**: Styled with [CYBERCORE CSS](https://sebyx07.github.io/cybercore-css/) featuring CRT scanlines, neon glows, glitch effects, chamfered HUD cards, and dark telemetry map layers.
 
 ## Installation
 
@@ -21,8 +21,14 @@ uv pip install -e .
 
 ## Usage
 
-Start the GUI server:
+Start the GUI server using `uv`:
 ```bash
+uv run garmin-connector gui
+```
+
+Alternatively, activate the virtual environment first:
+```bash
+source .venv/bin/activate
 garmin-connector gui
 ```
 Then open `http://127.0.0.1:8080` in your browser.

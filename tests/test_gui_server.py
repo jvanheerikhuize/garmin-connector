@@ -26,5 +26,5 @@ class TestGUIServer(unittest.TestCase):
         req = urllib.request.urlopen(url)
         self.assertEqual(req.status, 200)
         content = req.read().decode("utf-8")
-        self.assertIn("Garmin Connector", content)
+        self.assertIn("Garmin Course Uploader", content)
 

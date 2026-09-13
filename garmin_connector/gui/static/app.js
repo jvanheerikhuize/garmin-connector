@@ -58,7 +58,9 @@ async function checkDeviceStatus() {
 
     if (data.connected) {
       dot.classList.add("connected");
-      text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
+      const total = data.courses_count + data.staged_count;
+      const pendingStr = data.staged_count > 0 ? ` (${data.staged_count} pending sync)` : "";
+      text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${total} courses${pendingStr}`;
       btnRefresh.disabled = false;
       dropZone.style.opacity = "1";
       dropZone.style.pointerEvents = "auto";
@@ -101,6 +103,7 @@ async function handleFileUpload(file) {
       if (data.success) {
         showMessage("Successfully sideloaded!", "success");
         fetchCourses();
+        checkDeviceStatus();
       } else {
         showMessage("Failed to sideload: " + data.error, "error");
       }
@@ -159,6 +162,7 @@ async function performDeleteCourse() {
       if (trackLayer) map.removeLayer(trackLayer);
       document.getElementById("mapInfo").innerText = "Select a course to preview";
       fetchCourses();
+      checkDeviceStatus();
       showMessage(`Deleted ${filename}`, "success");
     } else {
       showMessage("Delete failed", "error");

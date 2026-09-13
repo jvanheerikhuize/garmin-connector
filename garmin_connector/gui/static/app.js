@@ -180,7 +180,7 @@ async function mapCourse(filename) {
     
     if (pts && pts.length > 0) {
       trackLayer = L.polyline(pts, {
-        color: '#00f0ff', 
+        color: '#00ff00', 
         weight: 4, 
         opacity: 0.8,
         className: 'glowing-track'

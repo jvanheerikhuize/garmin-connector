@@ -58,7 +58,9 @@ async function checkDeviceStatus() {
 
     if (data.connected) {
       dot.classList.add("connected");
-      text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${data.courses_count} courses`;
+      const total = data.courses_count + data.staged_count;
+      const pendingStr = data.staged_count > 0 ? ` (${data.staged_count} pending sync)` : "";
+      text.innerText = `Connected to ${data.model_name} (ID: ${data.unit_id}) - ${total} courses${pendingStr}`;
       btnRefresh.disabled = false;
       dropZone.style.opacity = "1";
       dropZone.style.pointerEvents = "auto";
@@ -101,6 +103,7 @@ async function handleFileUpload(file) {
       if (data.success) {
         showMessage("Successfully sideloaded!", "success");
         fetchCourses();
+        checkDeviceStatus();
       } else {
         showMessage("Failed to sideload: " + data.error, "error");
       }
@@ -123,7 +126,7 @@ async function fetchCourses() {
     
     listBody.innerHTML = data.courses.map(c => `
       <div class="course-card">
-        <div class="course-icon">${c.filename.endsWith('.fit') ? '⚡' : '🗺️'}</div>
+        <div class="course-icon">${c.filename.endsWith('.fit') ? '' : ''}</div>
         <div class="course-info">
           <div class="course-name">${c.filename}</div>
           <div class="course-meta">${Math.round(c.size_bytes / 1024)} KB &bull; ${c.location}</div>
@@ -159,6 +162,7 @@ async function performDeleteCourse() {
       if (trackLayer) map.removeLayer(trackLayer);
       document.getElementById("mapInfo").innerText = "Select a course to preview";
       fetchCourses();
+      checkDeviceStatus();
       showMessage(`Deleted ${filename}`, "success");
     } else {
       showMessage("Delete failed", "error");
@@ -180,7 +184,7 @@ async function mapCourse(filename) {
     
     if (pts && pts.length > 0) {
       trackLayer = L.polyline(pts, {
-        color: '#00f0ff', 
+        color: '#00ff00', 
         weight: 4, 
         opacity: 0.8,
         className: 'glowing-track'
@@ -200,7 +204,7 @@ function showMessage(msg, type = "info") {
   const container = document.getElementById("toastContainer");
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  const icon = type === "success" ? "✔" : type === "error" ? "✖" : "ℹ";
+  const icon = type === "success" ? "" : type === "error" ? "" : "";
   toast.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
   container.appendChild(toast);
   setTimeout(() => {

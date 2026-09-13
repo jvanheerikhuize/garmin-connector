@@ -74,22 +74,20 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/device":
             device = GarminDeviceDetector.get_first_device()
             if device:
-                manager = GarminDeviceManager(device=device)
-                courses = manager.list_courses()
-                staged_count = sum(1 for c in courses if "NEWFILES" in c.location.upper())
-                courses_count = sum(1 for c in courses if "COURSES" in c.location.upper())
-
                 self._send_json({
                     "connected": True,
                     "model_name": device.model_name,
                     "unit_id": device.unit_id,
                     "mount_point": str(device.mount_point),
                     "is_mtp": device.is_mtp,
-                    "staged_count": staged_count,
-                    "courses_count": courses_count,
+                    "mounting": False,
                 })
             else:
-                self._send_json({"connected": False, "model_name": None})
+                raw_usb = GarminDeviceDetector.check_raw_usb()
+                if raw_usb.get("detected"):
+                    self._send_json({"connected": False, "mounting": True, "model_name": None})
+                else:
+                    self._send_json({"connected": False, "mounting": False, "model_name": None})
             return
 
         # API: List Courses

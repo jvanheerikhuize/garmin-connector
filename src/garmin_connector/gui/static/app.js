@@ -182,6 +182,9 @@ function enableMap() {
   }
 }
 
+let missingCycles = 0;
+let lastKnownState = "disconnected"; // "connected", "mounting", "disconnected"
+
 async function checkDeviceStatus() {
   try {
     const res = await fetch("/api/device");
@@ -193,10 +196,13 @@ async function checkDeviceStatus() {
     const dropZone = document.getElementById("dropZone");
 
     if (data.connected) {
+      missingCycles = 0;
+      lastKnownState = "connected";
       dot.className = "status-dot connected";
-      const total = (data.courses_count || 0) + (data.staged_count || 0);
-      const pendingStr = data.staged_count > 0 ? ` (${data.staged_count} pending sync)` : "";
-      text.innerText = `Connected: ${data.model_name || 'Garmin Watch'} (${total} courses${pendingStr})`;
+      // Course counts will be populated by fetchCourses()
+      if (!text.innerText.includes("courses")) {
+          text.innerText = `Connected: ${data.model_name || 'Garmin Watch'}`;
+      }
       
       btnRefresh.disabled = false;
       btnOpenIngestModal.disabled = false;
@@ -210,21 +216,52 @@ async function checkDeviceStatus() {
         fetchCourses();
       }
     } else {
-      dot.className = "status-dot disconnected";
-      text.innerText = "No watch connected";
-      
-      btnRefresh.disabled = true;
-      btnOpenIngestModal.disabled = true;
-      dropZone.style.opacity = "0.5";
-      dropZone.style.pointerEvents = "none";
-      
-      document.getElementById("courseTableBody").innerHTML = `
-        <div class="empty-courses">No device connected. Connect watch via USB to view storage.</div>
-      `;
-
-      disableAndResetMap();
+      if (data.mounting) {
+        missingCycles = 0;
+        lastKnownState = "mounting";
+        
+        btnRefresh.disabled = true;
+        btnOpenIngestModal.disabled = true;
+        dropZone.style.opacity = "0.5";
+        dropZone.style.pointerEvents = "none";
+        
+        text.innerText = "Watch detected, waiting for storage mount...";
+        dot.className = "status-dot";
+        dot.style.backgroundColor = "orange";
+        document.getElementById("courseTableBody").innerHTML = `
+          <div class="empty-courses">Device detected. Waiting for OS to mount storage...</div>
+        `;
+        disableAndResetMap();
+      } else {
+        // Disconnected state
+        if (lastKnownState !== "disconnected" && missingCycles < 7) {
+          missingCycles++;
+          // Skip UI update to smooth over temporary USB re-enumerations
+          return;
+        }
+        
+        lastKnownState = "disconnected";
+        dot.className = "status-dot disconnected";
+        
+        btnRefresh.disabled = true;
+        btnOpenIngestModal.disabled = true;
+        dropZone.style.opacity = "0.5";
+        dropZone.style.pointerEvents = "none";
+        
+        text.innerText = "No watch connected";
+        dot.style.backgroundColor = ""; // Reset inline style
+        document.getElementById("courseTableBody").innerHTML = `
+          <div class="empty-courses">No device connected. Connect watch via USB to view storage.</div>
+        `;
+        disableAndResetMap();
+      }
     }
   } catch (e) {
+    if (lastKnownState !== "disconnected" && missingCycles < 7) {
+      missingCycles++;
+      return;
+    }
+    lastKnownState = "disconnected";
     console.error("Failed to check device status:", e);
     disableAndResetMap();
   }
@@ -280,9 +317,23 @@ async function fetchCourses() {
     const data = await res.json();
     const listBody = document.getElementById("courseTableBody");
 
+    const text = document.getElementById("deviceStatus");
     if (!data.courses || data.courses.length === 0) {
       listBody.innerHTML = '<div class="empty-courses">No courses found in watch storage</div>';
+      if (text.innerText.startsWith("Connected")) {
+         const modelName = text.innerText.split("(")[0].trim().replace("Connected: ", "");
+         text.innerText = `Connected: ${modelName} (0 courses)`;
+      }
       return;
+    }
+    
+    if (text.innerText.startsWith("Connected")) {
+       const stagedCount = data.courses.filter(c => c.location.toUpperCase().includes("NEWFILES")).length;
+       const coursesCount = data.courses.filter(c => c.location.toUpperCase().includes("COURSES")).length;
+       const total = stagedCount + coursesCount;
+       const pendingStr = stagedCount > 0 ? ` (${stagedCount} pending sync)` : "";
+       const modelName = text.innerText.split("(")[0].trim().replace("Connected: ", "");
+       text.innerText = `Connected: ${modelName} (${total} courses${pendingStr})`;
     }
 
     listBody.innerHTML = data.courses.map(c => {

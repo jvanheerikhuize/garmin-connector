@@ -105,6 +105,8 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                 c_list = [
                     {
                         "filename": c.filename,
+                        "full_path": str(c.full_path),
+                        "watch_path": f"/GARMIN/{'NewFiles' if 'NEWFILES' in c.location.upper() else 'Courses'}/{c.filename}",
                         "size_bytes": c.size_bytes,
                         "location": c.location,
                         "modified_at": c.modified_at.isoformat(),

@@ -1,7 +1,7 @@
 ---
 id: constitution
 title: Constitution
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # Constitution
@@ -11,6 +11,8 @@ The constitution is not itself a spec with requirements to implement — it is t
 ## 1. Purpose & Scope
 
 A lightweight, cross-platform (Linux-first) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+
+**Target release:** v1.0.0 — the first single-shot generation from this spec corpus is the MVP. `pyproject.toml`'s version bumps to `1.0.0` as part of that generation.
 
 **In scope:** everything described by a spec in this directory (skeleton or feature).
 **Out of scope:** see §6.
@@ -55,8 +57,6 @@ flowchart TD
         GarminDir["GARMIN/<br/>NEWFILES · COURSES · ACTIVITY"]
     end
 
-    MTP["device/mtp_client.py<br/>(standalone, unwired)"]
-
     FE <-- "fetch() JSON, 3s poll" --> Server
     Detector --> GVFS
     Detector --> Media
@@ -64,15 +64,12 @@ flowchart TD
     Manager --> Media
     GVFS --- GarminDir
     Media --- GarminDir
-    MTP -. "direct USB/PTP,<br/>not called by Process today" .-> Watch
 
     classDef skeleton fill:#0b3d91,stroke:#5b9bff,color:#fff
-    classDef unwired stroke-dasharray: 4 4
     class CLI,Launcher,Server,Detector,FE skeleton
-    class MTP unwired
 ```
 
-Darker/highlighted nodes are on the walking skeleton's critical path; the dashed node (`mtp_client.py`) is implemented but not called from anywhere else — see [direct-mtp-client](features/direct-mtp-client.md).
+Darker/highlighted nodes are on the walking skeleton's critical path.
 
 ### Repository layout
 
@@ -90,14 +87,12 @@ garmin-venu-x1/
 │       ├── device-manager.md
 │       ├── gpx-fit-conversion.md
 │       ├── course-management-api.md
-│       ├── gui-course-frontend.md
-│       └── direct-mtp-client.md   # unwired
+│       └── gui-course-frontend.md
 ├── src/garmin_connector/
 │   ├── cli.py
 │   ├── device/
 │   │   ├── detector.py
-│   │   ├── manager.py
-│   │   └── mtp_client.py          # unwired
+│   │   └── manager.py
 │   ├── converter/
 │   │   ├── gpx_parser.py
 │   │   ├── fit_encoder.py
@@ -131,7 +126,6 @@ garmin-venu-x1/
 - No web framework (Flask/FastAPI/etc.) — `http.server.HTTPServer` + `BaseHTTPRequestHandler` only.
 - No frontend framework/bundler — vanilla JS, Leaflet.js (CDN) for mapping, CYBERCORE CSS (vendored `cybercore.min.css`) for styling, Google Fonts (Exo 2, JetBrains Mono, Orbitron, Rajdhani) via CDN.
 - Optional runtime dependency `PyGObject`/`gi` (GIO/GVFS bindings) and the `gio` CLI, used opportunistically for MTP transfers on Linux; both have graceful fallbacks.
-- Optional runtime dependency `pyusb`, used only by `device/mtp_client.py` (currently unwired).
 
 ## 5. Cross-cutting invariants
 
@@ -142,6 +136,7 @@ garmin-venu-x1/
 - **CORS is fully open** (`Access-Control-Allow-Origin: *`) on all API responses — this is a local-only tool, not intended for multi-origin exposure.
 - **The GUI must never assume a device stays connected between requests.** Every mutating endpoint re-resolves `GarminDeviceDetector.get_first_device()` itself rather than trusting cached state.
 - **All diagrams in this repository's specs are Mermaid.** No ASCII art, no external image tools — see [spec/README.md](README.md).
+- **No dead code.** Every module described by a spec MUST be reachable from the CLI or the HTTP API (directly or transitively). A capability with no caller is not part of this spec corpus — cut it, or wire it in and describe the entry point that reaches it.
 
 ## 6. Explicitly out of scope (until a spec says otherwise)
 
@@ -149,4 +144,13 @@ garmin-venu-x1/
 - Multiple simultaneously connected watches (only the first detected device is ever used).
 - Activity file (`.fit` in `ACTIVITY/`) download/analysis — only `COURSES/` and `NEWFILES/` are managed.
 - Authentication/multi-user access to the GUI.
-- The direct MTP/PTP client (`device/mtp_client.py`) is not called from anywhere else in the app today; it is a standalone capability, not part of the skeleton's transfer path (see [direct-mtp-client](features/direct-mtp-client.md)).
+- Course backup/verification and a direct USB/PTP transfer client were both cut from v1 for having no reachable entry point (see §5's "no dead code" invariant) — either may return as a real feature spec, with a UI/CLI surface, post-v1.
+- DEM-based elevation enrichment (see [gpx-fit-conversion](features/gpx-fit-conversion.md) Non-Goals).
+
+## 7. Regeneration & Testing Requirement
+
+Per [spec/README.md](README.md)'s "rebuild test," a single-shot (re)generation from this corpus is not done until it passes a concrete check, not just a manual read-through:
+
+- The **walking skeleton chain** (§2) MUST have a passing automated test that: starts the server, requests `/api/device` and gets a well-formed response (connected or not), and requests `/` and gets the index page — equivalent to `tests/test_gui_server.py`'s existing check, kept and extended, not replaced.
+- Every `tier: feature` spec's stated requirements SHOULD have at least one corresponding test (unit-level for `converter/*` and `device/*`, integration-level for the HTTP API) before that feature is considered implemented, not just present in `src/`.
+- `pytest` MUST pass in full before a single-shot generation is reported as complete.

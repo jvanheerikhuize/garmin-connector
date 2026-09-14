@@ -1,8 +1,18 @@
-# Feature: Device Manager (Course File Operations)
+---
+id: device-manager
+title: Device Manager (Course File Operations)
+tier: feature
+status: implemented
+owners: [jerry]
+depends_on: [device-detection, gpx-fit-conversion]
+last_updated: 2026-09-14
+---
+
+# Device Manager (Course File Operations)
 
 `src/garmin_connector/device/manager.py` — `GarminDeviceManager`
 
-Depends on: [device-detection](device-detection.md), [gpx-fit-conversion](gpx-fit-conversion.md).
+Depends on: [device-detection](../device-detection.md), [gpx-fit-conversion](gpx-fit-conversion.md).
 
 ## Purpose
 
@@ -65,9 +75,9 @@ size_bytes: int
 modified_at: datetime   # UTC
 location: str            # "COURSES" | "NEWFILES (Pending Sync)" | "NEWFILES (staged)" (see note)
 ```
-Note: the dataclass docstring/comment says `"NEWFILES (staged)"` but the actual value produced by `list_courses` is `"NEWFILES (Pending Sync)"`. The GUI layer (see [gui-http-api](gui-http-api.md)) only ever checks for the substring `"NEWFILES"` uppercased, so this inconsistency is currently harmless — but a spec/implementation regeneration should standardize on `"NEWFILES (Pending Sync)"` as the single source of truth.
+Note: the dataclass docstring/comment says `"NEWFILES (staged)"` but the actual value produced by `list_courses` is `"NEWFILES (Pending Sync)"`. The GUI layer (see [course-management-api](course-management-api.md)) only ever checks for the substring `"NEWFILES"` uppercased, so this inconsistency is currently harmless — but a spec/implementation regeneration should standardize on `"NEWFILES (Pending Sync)"` as the single source of truth.
 
-## Non-goals
+## Non-Goals
 - No conflict resolution when a file of the same name already exists at the destination (silently overwritten).
 - No progress reporting/streaming for large transfers.
 - No retry/backoff beyond the two-tier fallback described above.

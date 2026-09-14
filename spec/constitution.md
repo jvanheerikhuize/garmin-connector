@@ -1,51 +1,137 @@
-# Constitution — Walking Skeleton & Invariants
+---
+id: constitution
+title: Constitution
+last_updated: 2026-09-14
+---
 
-## 1. Purpose
+# Constitution
+
+The constitution is not itself a spec with requirements to implement — it is the **sum of the walking-skeleton specs**, plus the scope, tech stack, and architecture that frame every spec in this repository. It changes rarely and deliberately.
+
+## 1. Purpose & Scope
 
 A lightweight, cross-platform (Linux-first) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
 
-## 2. Walking skeleton
+**In scope:** everything described by a spec in this directory (skeleton or feature).
+**Out of scope:** see §6.
 
-The thinnest end-to-end path that must always work, in order:
+## 2. The Walking Skeleton
 
-1. `garmin-connector gui` (CLI entrypoint) starts an embedded HTTP server on a free local port and opens it in a browser/app window.
-2. The served page polls `GET /api/device` to detect whether a Garmin watch is connected.
-3. Device detection scans known Linux mount locations (GVFS/MTP and USB mass-storage media roots) for a `GARMIN/` directory.
-4. The GUI reflects connection state (disconnected / mounting / connected) without crashing regardless of whether a watch is attached.
+The walking skeleton is not prose here — it is the sum of the specs tagged `tier: skeleton`. Each is independently maintained; this section only enumerates and orders them. A spec earns skeleton tier if the app cannot prove "it runs, end-to-end, at all" without it — removing any one of these breaks the whole chain, not just a feature.
 
-Everything else (course listing, ingest, delete, map preview, MTP direct fallback) is a **feature** layered on this skeleton. The skeleton itself must keep working even if every feature above it is removed.
+| Order | Spec | Proves |
+|---|---|---|
+| 1 | [cli-entrypoint](cli-entrypoint.md) | The process starts. |
+| 2 | [gui-bootstrap](gui-bootstrap.md) | It serves a page and answers `/api/device`, without crashing. |
+| 3 | [device-detection](device-detection.md) | It can truthfully sense whether a watch is attached. |
+| 4 | [connection-status-shell](connection-status-shell.md) | The page reflects that truth (disconnected / mounting / connected), continuously, without getting stuck. |
 
-## 3. Architecture boundaries (non-negotiable)
+Every `tier: feature` spec (under `features/`) is layered on top of this chain and must degrade gracefully to "not available" if the skeleton is intact but the feature is missing or broken — never the other way around.
+
+## 3. Architecture
+
+```mermaid
+flowchart TD
+    subgraph Browser["Browser"]
+        FE["gui/static frontend<br/>index.html + app.js"]
+    end
+
+    subgraph Process["garmin-connector process"]
+        CLI["cli.py"] --> Launcher["gui/launcher.py"]
+        Launcher --> Server["gui/server.py<br/>HTTP + JSON API"]
+        Server -. serves .-> FE
+        Server --> Detector["device/detector.py<br/>(read-only)"]
+        Server --> Manager["device/manager.py"]
+        Manager --> Detector
+        Manager --> Converter["converter/*<br/>gpx_parser · fit_encoder"]
+    end
+
+    subgraph HostOS["Host OS filesystem"]
+        GVFS["/run/user/uid/gvfs (MTP)"]
+        Media["/media · /mnt (USB mass storage)"]
+    end
+
+    subgraph Watch["Garmin watch"]
+        GarminDir["GARMIN/<br/>NEWFILES · COURSES · ACTIVITY"]
+    end
+
+    MTP["device/mtp_client.py<br/>(standalone, unwired)"]
+
+    FE <-- "fetch() JSON, 3s poll" --> Server
+    Detector --> GVFS
+    Detector --> Media
+    Manager --> GVFS
+    Manager --> Media
+    GVFS --- GarminDir
+    Media --- GarminDir
+    MTP -. "direct USB/PTP,<br/>not called by Process today" .-> Watch
+
+    classDef skeleton fill:#0b3d91,stroke:#5b9bff,color:#fff
+    classDef unwired stroke-dasharray: 4 4
+    class CLI,Launcher,Server,Detector,FE skeleton
+    class MTP unwired
+```
+
+Darker/highlighted nodes are on the walking skeleton's critical path; the dashed node (`mtp_client.py`) is implemented but not called from anywhere else — see [direct-mtp-client](features/direct-mtp-client.md).
+
+### Repository layout
 
 ```
-cli.py                     — argparse entrypoint, dispatches to gui launcher
-gui/launcher.py            — process bootstrap: free-port selection, browser/app-window launch, serve_forever loop
-gui/server.py              — stdlib http.server request handler; ALL HTTP/JSON API surface lives here
-gui/static/                — static frontend: index.html, app.js, styles.css, cybercore.min.css (no build step, no framework)
-device/detector.py         — read-only filesystem discovery of connected Garmin device(s); no mutation
-device/manager.py          — course file operations (list/sideload/delete/backup) against a detected device
-device/mtp_client.py       — standalone, self-contained direct USB/PTP client; NOT currently wired into manager.py or server.py
-converter/gpx_parser.py    — GPX XML -> CourseData (pure parsing, stdlib ElementTree, no gpxpy dependency despite it being installed)
-converter/fit_encoder.py   — CourseData -> Garmin .FIT binary (pure Python, no external FIT library)
-converter/gpx_to_fit.py    — glue: reads a GPX file, encodes it, writes a .FIT file
+garmin-venu-x1/
+├── spec/                          # source of truth — see spec/README.md
+│   ├── constitution.md            # this file
+│   ├── cli-entrypoint.md          # [skeleton]
+│   ├── gui-bootstrap.md           # [skeleton]
+│   ├── device-detection.md        # [skeleton]
+│   ├── connection-status-shell.md # [skeleton]
+│   ├── templates/
+│   │   └── spec-template.md
+│   └── features/
+│       ├── device-manager.md
+│       ├── gpx-fit-conversion.md
+│       ├── course-management-api.md
+│       ├── gui-course-frontend.md
+│       └── direct-mtp-client.md   # unwired
+├── src/garmin_connector/
+│   ├── cli.py
+│   ├── device/
+│   │   ├── detector.py
+│   │   ├── manager.py
+│   │   └── mtp_client.py          # unwired
+│   ├── converter/
+│   │   ├── gpx_parser.py
+│   │   ├── fit_encoder.py
+│   │   └── gpx_to_fit.py
+│   └── gui/
+│       ├── launcher.py
+│       ├── server.py
+│       └── static/
+│           ├── index.html
+│           ├── app.js
+│           ├── styles.css
+│           └── cybercore.min.css
+├── tests/
+├── examples/
+└── pyproject.toml
 ```
 
-Rules:
+### Architecture boundaries (non-negotiable)
+
 - **`device/detector.py` is read-only.** It must never write, move, or delete anything on the watch or host filesystem.
 - **`converter/*` has zero device knowledge.** It only ever deals with in-memory data (`CourseData`, GPX text, FIT bytes) and local file I/O — never touches `device/*`.
 - **`gui/server.py` is the only place HTTP concerns exist.** `device/*` and `converter/*` must remain usable as a plain Python library with no HTTP/JSON dependency.
 - **`gui/static/*` has no build step.** Plain HTML/CSS/JS served as-is from disk; no bundler, no npm dependency, no transpilation.
 - **The CLI has exactly one subcommand today: `gui`.** Any new subcommand is a feature-level spec addition, not a constitution change.
 
-## 4. Tech stack (fixed)
+## 4. Tech Stack (fixed)
 
 - Python ≥ 3.10, packaged via `setuptools`, `src/` layout (`src/garmin_connector/`).
-- Runtime dependencies: `gpxpy`, `fitparse` (used only for reading `.fit` files back out in `gui/server.py`'s fetch-course endpoint — not for writing).
+- Runtime dependencies: `gpxpy`, `fitparse` (used only for reading `.fit` files back out in the course-management API's fetch-course endpoint — not for writing).
 - Dev dependency: `pytest`.
 - No web framework (Flask/FastAPI/etc.) — `http.server.HTTPServer` + `BaseHTTPRequestHandler` only.
 - No frontend framework/bundler — vanilla JS, Leaflet.js (CDN) for mapping, CYBERCORE CSS (vendored `cybercore.min.css`) for styling, Google Fonts (Exo 2, JetBrains Mono, Orbitron, Rajdhani) via CDN.
 - Optional runtime dependency `PyGObject`/`gi` (GIO/GVFS bindings) and the `gio` CLI, used opportunistically for MTP transfers on Linux; both have graceful fallbacks.
-- Optional runtime dependency `pyusb`, used only by `device/mtp_client.py` (currently unwired — see feature spec).
+- Optional runtime dependency `pyusb`, used only by `device/mtp_client.py` (currently unwired).
 
 ## 5. Cross-cutting invariants
 
@@ -55,11 +141,12 @@ Rules:
 - **Filesystem paths under a device's `GARMIN/` directory are case-insensitive matched** (`NEWFILES`, `COURSES`, `ACTIVITY`) since Garmin devices are inconsistent about casing across models/firmware.
 - **CORS is fully open** (`Access-Control-Allow-Origin: *`) on all API responses — this is a local-only tool, not intended for multi-origin exposure.
 - **The GUI must never assume a device stays connected between requests.** Every mutating endpoint re-resolves `GarminDeviceDetector.get_first_device()` itself rather than trusting cached state.
+- **All diagrams in this repository's specs are Mermaid.** No ASCII art, no external image tools — see [spec/README.md](README.md).
 
-## 6. Explicitly out of scope (until a feature spec says otherwise)
+## 6. Explicitly out of scope (until a spec says otherwise)
 
 - Windows/macOS device detection (candidate mount roots are Linux-specific).
 - Multiple simultaneously connected watches (only the first detected device is ever used).
 - Activity file (`.fit` in `ACTIVITY/`) download/analysis — only `COURSES/` and `NEWFILES/` are managed.
 - Authentication/multi-user access to the GUI.
-- The direct MTP/PTP client (`device/mtp_client.py`) is not called from anywhere else in the app today; it is a standalone capability, not part of the skeleton's transfer path.
+- The direct MTP/PTP client (`device/mtp_client.py`) is not called from anywhere else in the app today; it is a standalone capability, not part of the skeleton's transfer path (see [direct-mtp-client](features/direct-mtp-client.md)).

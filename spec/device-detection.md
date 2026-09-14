@@ -1,10 +1,26 @@
-# Feature: Device Detection
+---
+id: device-detection
+title: Device Detection
+tier: skeleton
+status: implemented
+owners: [jerry]
+depends_on: []
+last_updated: 2026-09-14
+---
+
+# Device Detection
 
 `src/garmin_connector/device/detector.py` — `GarminDeviceDetector`
 
 ## Purpose
 
-Read-only discovery of connected Garmin watches on Linux, across both USB Mass Storage and MTP/GVFS mount styles, without requiring the user to know or supply a mount path.
+Read-only discovery of connected Garmin watches on Linux, across both USB Mass Storage and MTP/GVFS mount styles, without requiring the user to know or supply a mount path. This is the sensing half of the walking skeleton: without it, nothing else in the app can know a watch exists.
+
+## Scope
+
+**In scope:** locating a connected watch's `GARMIN/` directory and reading its identifying metadata.
+
+**Out of scope:** anything that writes to the watch or host filesystem (see [device-manager](features/device-manager.md)); anything HTTP-facing (see [gui-bootstrap](gui-bootstrap.md)).
 
 ## Requirements
 
@@ -40,8 +56,9 @@ Read-only discovery of connected Garmin watches on Linux, across both USB Mass S
 - `check_raw_usb() -> dict` — inspects `/sys/bus/usb/devices/*/idVendor` + `idProduct` for Garmin's USB vendor ID (`091e`), independent of any filesystem mount. Returns `{"detected": True, "vid", "pid", "is_protocol_mode": <pid == "0003">, "sysfs_path"}` or `{"detected": False}`. Used by the GUI to distinguish "no device at all" from "device physically attached but not yet mounted" (`is_protocol_mode` further distinguishes Garmin's transfer-protocol handshake mode, PID `0003`, from MTP mode).
 - MUST NOT raise for permission errors or missing paths anywhere in this scan — best-effort, silent skip.
 
-## Data shape — `GarminDeviceInfo`
+## Data Shapes / Interfaces
 
+`GarminDeviceInfo`:
 ```
 model_name: str
 unit_id: Optional[str]
@@ -58,7 +75,7 @@ gio_newfiles_uri: Optional[str]
 gio_courses_uri: Optional[str]
 ```
 
-## Non-goals
+## Non-Goals
 - No caching — every call re-scans the filesystem.
 - No Windows/macOS mount conventions.
 - No disambiguation UI when multiple devices/candidates match — only the first is ever surfaced to the rest of the app.

@@ -1,4 +1,14 @@
-# Feature: GPX ↔ FIT Conversion
+---
+id: gpx-fit-conversion
+title: GPX <-> FIT Conversion
+tier: feature
+status: implemented
+owners: [jerry]
+depends_on: []
+last_updated: 2026-09-14
+---
+
+# GPX ↔ FIT Conversion
 
 `src/garmin_connector/converter/{gpx_parser,fit_encoder,gpx_to_fit}.py`
 
@@ -58,8 +68,8 @@ Parse GPX route/track files into an internal course representation, and encode t
 - Returns both the written path and the parsed `CourseData` (callers use the latter for summary info like distance).
 - **`enrich_dem` parameter is accepted but currently unused** — no DEM (digital elevation model) enrichment is implemented. This is a documented gap, not a bug to silently "fix" without a spec decision on scope/data source.
 
-## Non-goals (current)
-- No FIT → GPX conversion (one-directional GPX→FIT only for writing; FIT reading for the map-preview feature uses the third-party `fitparse` library instead, see [gui-http-api](gui-http-api.md)).
+## Non-Goals
+- No FIT → GPX conversion (one-directional GPX→FIT only for writing; FIT reading for the map-preview feature uses the third-party `fitparse` library instead, see [course-management-api](course-management-api.md)).
 - No elevation enrichment despite the `enrich_dem` flag existing.
 - No multi-lap or multi-segment course support — always exactly one lap.
 - No power/heart-rate/cadence fields — course files carry only position, altitude, distance, timing, and course-point cues.

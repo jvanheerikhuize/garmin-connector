@@ -16,7 +16,7 @@ Depends on: [device-detection](../device-detection.md), [gpx-fit-conversion](gpx
 
 ## Purpose
 
-Sideload, list, verify, delete, and back up course files (`.fit`/`.gpx`) on a detected Garmin watch, transparently handling both direct POSIX filesystem access (USB mass storage) and GIO/MTP transfer (GVFS-mounted watches).
+Sideload, list, and delete course files (`.fit`/`.gpx`) on a detected Garmin watch, transparently handling both direct POSIX filesystem access (USB mass storage) and GIO/MTP transfer (GVFS-mounted watches).
 
 ## Construction
 - `GarminDeviceManager(device=None, custom_mount=None)`:
@@ -46,14 +46,10 @@ Target directory is `device.newfiles_dir`, falling back to `device.garmin_dir / 
 
 Filenames are percent-encoded (`urllib.parse.quote`) when building GIO target URIs.
 
-### Verification (`verify_staged_course`)
-- Given a filename, look it up (case-insensitive) via `list_courses()`.
-- Returns `{"verified": True, "filename", "size_bytes", "location", "modified_at"}` on match, `{"verified": False, "filename"}` otherwise.
-
 ### Listing (`list_courses`)
 - Returns a `List[CourseFileSummary]` combining:
   1. Files directly in `courses_dir` (if it exists) with `.fit`/`.gpx` extension (case-insensitive) — `location="COURSES"`.
-  2. Files directly in `newfiles_dir` (if it exists) with the same extension filter — `location="NEWFILES (Pending Sync)"`.
+  2. Files directly in `newfiles_dir` (if it exists) with the same extension filter — `location="NEWFILES (Pending Sync)"` (the single canonical value; MUST NOT vary).
 - Each entry: `filename`, `full_path`, `size_bytes`, `modified_at` (UTC, from mtime), `location`.
 - Both groups are sorted by filename (via `sorted(dir.iterdir())`); COURSES entries always precede NEWFILES entries in the combined list.
 - Non-file entries and non-`.fit`/`.gpx` files are silently skipped.
@@ -63,21 +59,19 @@ Filenames are percent-encoded (`urllib.parse.quote`) when building GIO target UR
 - If neither POSIX path deleted the file AND the device is MTP, fall back to `gio remove <uri>/<filename>` against courses then newfiles GIO URIs, stopping at the first success.
 - Returns `True` if deleted via any path, `False` otherwise. Never raises for a missing file — returns `False`.
 
-### Backup (`backup_courses`)
-- Given a destination directory (created if missing), copies every file from `list_courses()` into it by filename, reading each source file's bytes and writing them locally.
-- Returns the list of local `Path`s written. No filtering by location — both COURSES and staged NEWFILES entries are backed up.
+## Data Shapes / Interfaces
 
-## Data shape — `CourseFileSummary`
+`CourseFileSummary`:
 ```
 filename: str
 full_path: Path
 size_bytes: int
 modified_at: datetime   # UTC
-location: str            # "COURSES" | "NEWFILES (Pending Sync)" | "NEWFILES (staged)" (see note)
+location: str            # "COURSES" | "NEWFILES (Pending Sync)" -- exactly these two values, nothing else
 ```
-Note: the dataclass docstring/comment says `"NEWFILES (staged)"` but the actual value produced by `list_courses` is `"NEWFILES (Pending Sync)"`. The GUI layer (see [course-management-api](course-management-api.md)) only ever checks for the substring `"NEWFILES"` uppercased, so this inconsistency is currently harmless — but a spec/implementation regeneration should standardize on `"NEWFILES (Pending Sync)"` as the single source of truth.
 
 ## Non-Goals
 - No conflict resolution when a file of the same name already exists at the destination (silently overwritten).
 - No progress reporting/streaming for large transfers.
 - No retry/backoff beyond the two-tier fallback described above.
+- No verification/backup API (`verify_staged_course`, `backup_courses`) — cut from v1: neither was reachable from any CLI/HTTP surface. Reintroduce only alongside an actual UI/CLI entry point that calls them.

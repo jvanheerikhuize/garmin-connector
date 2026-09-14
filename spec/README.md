@@ -32,8 +32,7 @@ spec/
     ├── device-manager.md          # [feature]
     ├── gpx-fit-conversion.md      # [feature]
     ├── course-management-api.md   # [feature]
-    ├── gui-course-frontend.md     # [feature]
-    └── direct-mtp-client.md       # [feature, unwired]
+    └── gui-course-frontend.md     # [feature]
 ```
 
 ## Status

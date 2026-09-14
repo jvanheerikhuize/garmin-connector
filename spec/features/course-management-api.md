@@ -22,7 +22,7 @@ The JSON API endpoints that let a user actually do something with a connected wa
 
 **In scope:** `/api/courses`, `/api/sideload`, `/api/courses/<filename>` (DELETE), `/api/fetch-course/<filename>`.
 
-**Out of scope:** `/api/device`, static serving, and general server conventions (see [gui-bootstrap](../gui-bootstrap.md)); the direct MTP transfer path (see [direct-mtp-client](direct-mtp-client.md), not used here).
+**Out of scope:** `/api/device`, static serving, and general server conventions (see [gui-bootstrap](../gui-bootstrap.md)).
 
 ## Requirements
 
@@ -66,7 +66,7 @@ Request body: JSON `{"gpx_content": "<raw gpx xml>", "course_name": "<optional, 
 - No device → `503` JSON error `"No Garmin device connected"`.
 - Deleted successfully → `{"success": true, "filename": <filename>}`.
 - Not found/deletion failed → `404` JSON error `"Course '<filename>' not found"`.
-- **Known gap:** unlike the other mutating handlers here, this one does not currently wrap `GarminDeviceManager(...)` construction or `delete_course` in a try/except — an unexpected exception here would propagate to `http.server`'s default error handling rather than returning clean JSON. This is a known inconsistency versus the "never crash on a per-request error" invariant in the constitution, tracked as an open question below rather than silently fixed.
+- MUST wrap `GarminDeviceManager(...)` construction and `delete_course` in the same try/except-to-500-JSON pattern as every other mutating handler in this spec, per the constitution's "never crash on a per-request error" invariant. (v1 fix: the original implementation omitted this; regeneration must include it.)
 
 ## Data Shapes / Interfaces
 
@@ -93,6 +93,3 @@ DELETE /api/courses/<filename> -> 200 | 404
 - No pagination, filtering, or sorting parameters on `/api/courses`.
 - No authentication/session/rate-limiting — single local user assumed.
 - No streaming/chunked upload for `/api/sideload` — the whole GPX body is read into memory at once.
-
-## Open Questions
-- Should `DELETE /api/courses/<filename>` be wrapped in the same try/except pattern as the other mutating endpoints, for consistency with the constitution's "never crash on a per-request error" invariant? Flagged during spec seeding, not yet decided.

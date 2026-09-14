@@ -61,15 +61,14 @@ Parse GPX route/track files into an internal course representation, and encode t
 26 values matching the Garmin FIT `course_point` profile (`GENERIC=0` through `SEGMENT_END=25`) — see source for the full table; must stay byte-for-byte aligned with Garmin's profile since the watch firmware interprets these as fixed enums.
 
 ## `gpx_to_fit.py` requirements
-- `convert_gpx_to_fit(gpx_path, output_fit_path=None, course_name=None, sport=CYCLING, enrich_dem=True) -> (Path, CourseData)`.
+- `convert_gpx_to_fit(gpx_path, output_fit_path=None, course_name=None, sport=CYCLING) -> (Path, CourseData)`.
 - Raises `FileNotFoundError` if `gpx_path` doesn't exist.
 - Default output path: same directory/stem as input with `.fit` extension.
 - Creates parent directories for the output path if needed.
 - Returns both the written path and the parsed `CourseData` (callers use the latter for summary info like distance).
-- **`enrich_dem` parameter is accepted but currently unused** — no DEM (digital elevation model) enrichment is implemented. This is a documented gap, not a bug to silently "fix" without a spec decision on scope/data source.
 
 ## Non-Goals
 - No FIT → GPX conversion (one-directional GPX→FIT only for writing; FIT reading for the map-preview feature uses the third-party `fitparse` library instead, see [course-management-api](course-management-api.md)).
-- No elevation enrichment despite the `enrich_dem` flag existing.
+- No elevation enrichment (DEM or otherwise) — cut from v1. GPX-supplied elevation is used as-is; a future DEM-enrichment feature would need its own spec (data source, offline vs. API, caching) rather than a silent flag.
 - No multi-lap or multi-segment course support — always exactly one lap.
 - No power/heart-rate/cadence fields — course files carry only position, altitude, distance, timing, and course-point cues.

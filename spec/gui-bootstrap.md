@@ -58,6 +58,23 @@ Bring up the local web server that everything else (course management, map previ
 
 ## Data Shapes / Interfaces
 
+`gui/launcher.py`:
+```
+find_free_port(start_port: int = 8080) -> int
+open_desktop_window(url: str) -> None
+launch_gui(host: str = "127.0.0.1", port: int = 8080, open_browser: bool = True) -> None   # blocks in serve_forever()
+```
+
+`gui/server.py`:
+```
+STATIC_DIR: Path = <package dir>/gui/static
+class GarminGUIRequestHandler(http.server.BaseHTTPRequestHandler)
+run_gui_server(host: str = "127.0.0.1", port: int = 8080) -> http.server.HTTPServer   # binds and returns; does NOT call serve_forever()
+```
+`run_gui_server` returning an un-started server is load-bearing: the regression test starts it on its own thread and shuts it down.
+
+`gui/__init__.py` re-exports: `launch_gui, run_gui_server`.
+
 ```
 GET /api/device -> 200
   {"connected": true,  "model_name": str, "unit_id": str|null, "mount_point": str, "is_mtp": bool, "mounting": false}

@@ -77,6 +77,7 @@ Darker/highlighted nodes are on the walking skeleton's critical path.
 garmin-venu-x1/
 ├── spec/                          # source of truth — see spec/README.md
 │   ├── constitution.md            # this file
+│   ├── regeneration.md            # single-shot rewrite runbook
 │   ├── cli-entrypoint.md          # [skeleton]
 │   ├── gui-bootstrap.md           # [skeleton]
 │   ├── device-detection.md        # [skeleton]
@@ -87,7 +88,8 @@ garmin-venu-x1/
 │       ├── device-manager.md
 │       ├── gpx-fit-conversion.md
 │       ├── course-management-api.md
-│       └── gui-course-frontend.md
+│       ├── gui-course-frontend.md
+│       └── ui-design.md
 ├── src/garmin_connector/
 │   ├── cli.py
 │   ├── device/
@@ -105,8 +107,8 @@ garmin-venu-x1/
 │           ├── app.js
 │           ├── styles.css
 │           └── cybercore.min.css
-├── tests/
-├── examples/
+├── tests/                         # regression oracle; test_skeleton.py covers constitution §7
+├── examples/                      # fixtures
 └── pyproject.toml
 ```
 
@@ -121,11 +123,11 @@ garmin-venu-x1/
 ## 4. Tech Stack (fixed)
 
 - Python ≥ 3.10, packaged via `setuptools`, `src/` layout (`src/garmin_connector/`).
-- Runtime dependencies: `gpxpy`, `fitparse` (used only for reading `.fit` files back out in the course-management API's fetch-course endpoint — not for writing).
+- Runtime dependency: `fitparse` only (used solely for reading `.fit` files back out in the course-management API's fetch-course endpoint — not for writing). `gpxpy` was previously declared but never imported; it is dropped under the "no dead code" invariant — GPX parsing is stdlib `xml.etree.ElementTree`.
 - Dev dependency: `pytest`.
 - No web framework (Flask/FastAPI/etc.) — `http.server.HTTPServer` + `BaseHTTPRequestHandler` only.
 - No frontend framework/bundler — vanilla JS, Leaflet.js (CDN) for mapping, CYBERCORE CSS (vendored `cybercore.min.css`) for styling, Google Fonts (Exo 2, JetBrains Mono, Orbitron, Rajdhani) via CDN.
-- Optional runtime dependency `PyGObject`/`gi` (GIO/GVFS bindings) and the `gio` CLI, used opportunistically for MTP transfers on Linux; both have graceful fallbacks.
+- Optional runtime dependency `PyGObject`/`gi` (GIO/GVFS bindings) and the `gio` CLI, used opportunistically for MTP transfers on Linux; both have graceful fallbacks. Both depend on the import-time `GIO_MODULE_DIR` setup specified in [device-manager](features/device-manager.md).
 
 ## 5. Cross-cutting invariants
 
@@ -149,8 +151,8 @@ garmin-venu-x1/
 
 ## 7. Regeneration & Testing Requirement
 
-Per [spec/README.md](README.md)'s "rebuild test," a single-shot (re)generation from this corpus is not done until it passes a concrete check, not just a manual read-through:
+Per [spec/README.md](README.md)'s "rebuild test," a single-shot (re)generation from this corpus — run per [regeneration.md](regeneration.md) — is not done until it passes a concrete check, not just a manual read-through:
 
-- The **walking skeleton chain** (§2) MUST have a passing automated test that: starts the server, requests `/api/device` and gets a well-formed response (connected or not), and requests `/` and gets the index page — equivalent to `tests/test_gui_server.py`'s existing check, kept and extended, not replaced.
+- The **walking skeleton chain** (§2) MUST have a passing automated test (`tests/test_skeleton.py`) that: starts the server on a free port, requests `/api/device` and gets a well-formed response (connected or not), and requests `/` and gets the index page. `tests/test_gui_server.py`'s existing check stays as-is alongside it.
 - Every `tier: feature` spec's stated requirements SHOULD have at least one corresponding test (unit-level for `converter/*` and `device/*`, integration-level for the HTTP API) before that feature is considered implemented, not just present in `src/`.
 - `pytest` MUST pass in full before a single-shot generation is reported as complete.

@@ -58,6 +58,21 @@ Read-only discovery of connected Garmin watches on Linux, across both USB Mass S
 
 ## Data Shapes / Interfaces
 
+`device/detector.py`:
+```
+format_mtp_uri(host: str, rel_path: Path | str) -> str
+    # "mtp://" + host + "/" + "/".join(urllib.parse.quote(part) for part in Path(rel_path).parts)
+    # e.g. ("091e_51fb_test", "Internal Storage/GARMIN/NewFiles") -> "mtp://091e_51fb_test/Internal%20Storage/GARMIN/NewFiles"
+class GarminDeviceDetector:        # all classmethods/staticmethods, no instance state
+    detect_devices(custom_path=None) -> List[GarminDeviceInfo]
+    get_first_device(custom_path=None) -> Optional[GarminDeviceInfo]
+    check_raw_usb() -> dict
+```
+
+`device/__init__.py` re-exports: `GarminDeviceDetector, GarminDeviceInfo, GarminDeviceManager` (the last from `device/manager.py`).
+
+`garmin_connector/__init__.py` exposes `__version__` (must equal `pyproject.toml`'s version) and performs the import-time GIO setup specified in [device-manager](features/device-manager.md).
+
 `GarminDeviceInfo`:
 ```
 model_name: str

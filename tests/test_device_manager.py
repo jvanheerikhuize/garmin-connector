@@ -47,17 +47,12 @@ class TestDeviceManager(unittest.TestCase):
             self.assertEqual(dest.suffix, ".fit")
             self.assertEqual(dest.parent, garmin_dir / "NEWFILES")
 
-            # Verify staged course
-            v_status = manager.verify_staged_course(dest.name)
-            self.assertTrue(v_status["verified"])
-            self.assertEqual(v_status["filename"], dest.name)
-            self.assertGreater(v_status["size_bytes"], 0)
-
             # List courses
             courses = manager.list_courses()
             self.assertEqual(len(courses), 1)
             self.assertEqual(courses[0].filename, dest.name)
-            self.assertIn("Pending Sync", courses[0].location)
+            self.assertGreater(courses[0].size_bytes, 0)
+            self.assertEqual(courses[0].location, "NEWFILES (Pending Sync)")
 
             # Test deleting
             deleted = manager.delete_course(dest.name)

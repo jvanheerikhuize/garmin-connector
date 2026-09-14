@@ -115,6 +115,10 @@ body {
   background: var(--cyber-chrome-500, #747d99);
 }
 
+.status-dot.mounting {
+  background: orange;
+}
+
 /* Main Grid Layout */
 .main-grid {
   display: grid;

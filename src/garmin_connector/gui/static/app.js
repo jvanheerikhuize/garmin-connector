@@ -226,8 +226,7 @@ async function checkDeviceStatus() {
         dropZone.style.pointerEvents = "none";
         
         text.innerText = "Watch detected, waiting for storage mount...";
-        dot.className = "status-dot";
-        dot.style.backgroundColor = "orange";
+        dot.className = "status-dot mounting";
         document.getElementById("courseTableBody").innerHTML = `
           <div class="empty-courses">Device detected. Waiting for OS to mount storage...</div>
         `;
@@ -249,7 +248,6 @@ async function checkDeviceStatus() {
         dropZone.style.pointerEvents = "none";
         
         text.innerText = "No watch connected";
-        dot.style.backgroundColor = ""; // Reset inline style
         document.getElementById("courseTableBody").innerHTML = `
           <div class="empty-courses">No device connected. Connect watch via USB to view storage.</div>
         `;

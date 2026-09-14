@@ -35,7 +35,8 @@ Everything a user can actually *do* once the [connection-status-shell](../connec
 ## Requirements
 
 ### Map behavior
-- Initialized centered on `[51.505, -0.09]` (London) at zoom 4, dark CartoDB basemap tiles (`dark_all`).
+- Initialized centered on `[51.505, -0.09]` (London) at zoom 4, with zoom and attribution controls enabled.
+- Basemap tile layer: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`, subdomains `abcd`, `maxZoom: 19`, attribution `&copy; OpenStreetMap contributors &copy; CARTO`.
 - **`disableAndResetMap()`** (implements the hook [connection-status-shell](../connection-status-shell.md) calls on mounting/disconnected/error): removes any drawn track, resets view to the default center/zoom, disables all interaction (drag/zoom/keyboard), shows the empty overlay with "Connect watch via USB to enable route preview", and sets `mapInfo` to "No watch connected".
 - **`enableMap()`** (implements the hook called on connected): re-enables interaction; if no track is currently drawn, shows the empty overlay with "Select a course to preview route" and `mapInfo` "No route selected" (but only overwrites `mapInfo` if it currently reads "No watch connected", to avoid clobbering an in-progress/loaded-route message); if a track *is* drawn, hides the overlay.
 - **Mapping a course** (`mapCourse(filename)`): sets a loading message, calls `GET /api/fetch-course/<filename>`, throws on `success: false`. Clears any existing track layer first. If points returned: draws a cyan (`#00f0ff`) polyline (weight 4, opacity 0.9, class `glowing-track`), fits the map bounds to it with 30px padding, hides the overlay, sets `mapInfo` to `"Showing: <filename> (<n> trackpoints)"`. If zero points: shows the overlay with `"No GPS trackpoints found in <filename>"` and mirrors that in `mapInfo`. On any fetch/parse error: shows the overlay and `mapInfo` with `"Failed to load route: <error>"` and raises an error toast.

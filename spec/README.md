@@ -6,7 +6,7 @@ This directory is the **single source of truth** for `garmin-venu-x1`. From now 
 2. **`constitution.md`** is the sum of the `tier: skeleton` specs plus scope, tech stack, and architecture. It changes rarely and deliberately — see [constitution.md](constitution.md) for what "skeleton" means here.
 3. **Every spec file** starts from [`templates/spec-template.md`](templates/spec-template.md) and carries frontmatter (`id`, `title`, `tier`, `status`, `depends_on`, ...). `tier: skeleton` specs live at the root of `spec/`; `tier: feature` specs live under `spec/features/`.
 4. **Change proposals**: when asked for a change, an agent edits the relevant spec file(s) and stops — it presents a diff of the *spec*, not the application, for review/approval.
-5. **Single-shot implementation**: once a spec file (or set of files) has accumulated a sufficient, coherent corpus of change, an agent implements it against `src/` in one pass, then runs the test suite to confirm behavior matches the spec.
+5. **Single-shot implementation**: once a spec file (or set of files) has accumulated a sufficient, coherent corpus of change, an agent implements it against `src/` in one pass, then runs the test suite to confirm behavior matches the spec. A *full* regeneration follows [regeneration.md](regeneration.md) — inputs, outputs, order, gap rule, gate, and the prompt for a fresh agent.
 6. **Rebuild test**: a spec is "good enough" if a clean agent, given only `spec/`, could regenerate a working equivalent of that slice. Gaps found during implementation should be patched back into the spec, not silently resolved only in code.
 7. **Drift**: `spec/` and `src/` should never silently diverge. If code is changed directly (hotfix, exploratory patch), the corresponding spec file(s) must be updated in the same change before it's considered done.
 8. **Diagrams are always Mermaid.** No ASCII art, no external image tools, no screenshots of diagrams — every diagram in `spec/` must be a fenced ` ```mermaid ` block so it renders natively wherever the spec is viewed.
@@ -22,6 +22,7 @@ This directory is the **single source of truth** for `garmin-venu-x1`. From now 
 spec/
 ├── README.md                      # this file
 ├── constitution.md                # scope, tech stack, architecture (mermaid), walking-skeleton composition
+├── regeneration.md                # single-shot rewrite runbook + fresh-agent prompt
 ├── cli-entrypoint.md              # [skeleton]
 ├── gui-bootstrap.md               # [skeleton]
 ├── device-detection.md            # [skeleton]
@@ -32,7 +33,8 @@ spec/
     ├── device-manager.md          # [feature]
     ├── gpx-fit-conversion.md      # [feature]
     ├── course-management-api.md   # [feature]
-    └── gui-course-frontend.md     # [feature]
+    ├── gui-course-frontend.md     # [feature]
+    └── ui-design.md               # [feature] design tokens, components, markup contract
 ```
 
 ## Status

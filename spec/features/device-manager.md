@@ -18,12 +18,25 @@ Depends on: [device-detection](../device-detection.md), [gpx-fit-conversion](gpx
 
 Sideload, list, and delete course files (`.fit`/`.gpx`) on a detected Garmin watch, transparently handling both direct POSIX filesystem access (USB mass storage) and GIO/MTP transfer (GVFS-mounted watches).
 
-## Construction
+## Requirements
+
+### GVFS module discovery (process-level, Linux)
+PyGObject's `Gio` and the `gio` CLI can only resolve `mtp://` URIs if GLib loads the GVFS backend modules, which on many distros it won't do unless `GIO_MODULE_DIR` points at them. Therefore:
+- At **package import time** (`garmin_connector/__init__.py`, exactly once), check these candidate directories in order and set `os.environ["GIO_MODULE_DIR"]` to the **first** one containing a `libgvfsdbus.so`:
+  ```
+  /usr/lib/x86_64-linux-gnu/gio/modules
+  /usr/lib/aarch64-linux-gnu/gio/modules
+  /usr/lib/gio/modules
+  /usr/lib64/gio/modules
+  ```
+- If none match, leave the environment untouched (GIO may still work if the system is configured correctly).
+- MUST NOT override a `GIO_MODULE_DIR` the user has already set in their environment.
+- The `gio` CLI fallbacks below inherit `os.environ`, so this single import-time setup covers both the PyGObject and subprocess paths. Do not duplicate the check per module.
+
+### Construction
 - `GarminDeviceManager(device=None, custom_mount=None)`:
   - If `device` is passed, use it directly (no re-detection).
   - Otherwise call `GarminDeviceDetector.get_first_device(custom_mount)`; if nothing is found, raise `ConnectionError` with a message instructing the user to connect via USB or pass `--mount`.
-
-## Requirements
 
 ### Sideloading (`sideload_route`)
 - Accepts a `.gpx` or `.fit` source path, a `Sport` (default `CYCLING`), and an optional `course_name`.
@@ -38,7 +51,7 @@ Target directory is `device.newfiles_dir`, falling back to `device.garmin_dir / 
 
 1. **If device is MTP and a NEWFILES GIO URI is known:**
    a. Try native transfer via PyGObject (`gi.repository.Gio`) — `Gio.File.copy` with `OVERWRITE`.
-   b. If that raises for any reason, fall back to shelling out to the `gio copy --default-permissions <src> <uri>` CLI.
+   b. If that raises for any reason, fall back to shelling out to the `gio copy --default-permissions <src> <uri>` CLI (inheriting `os.environ`, see "GVFS module discovery").
    c. If both fail, propagate the last error.
 2. **Otherwise (or as the non-MTP path):** create the NEWFILES dir if missing, then a direct `write_bytes` POSIX copy.
    - If that raises `OSError` with `errno == 95` (operation not supported — typical of some MTP FUSE mounts that reject direct writes) AND a GIO NEWFILES URI is known, retry via the `gio copy` CLI as a last-resort fallback.
@@ -60,6 +73,16 @@ Filenames are percent-encoded (`urllib.parse.quote`) when building GIO target UR
 - Returns `True` if deleted via any path, `False` otherwise. Never raises for a missing file — returns `False`.
 
 ## Data Shapes / Interfaces
+
+`device/manager.py`:
+```
+class GarminDeviceManager:
+    __init__(self, device: Optional[GarminDeviceInfo] = None, custom_mount: Optional[str | Path] = None)
+    device: GarminDeviceInfo
+    sideload_route(self, source_path: str | Path, sport: Sport = Sport.CYCLING, course_name: Optional[str] = None) -> Path
+    list_courses(self) -> List[CourseFileSummary]
+    delete_course(self, filename: str) -> bool
+```
 
 `CourseFileSummary`:
 ```

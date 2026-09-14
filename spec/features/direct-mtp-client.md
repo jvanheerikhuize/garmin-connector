@@ -1,4 +1,14 @@
-# Feature: Direct USB MTP/PTP Client (standalone, unwired)
+---
+id: direct-mtp-client
+title: Direct USB MTP/PTP Client (standalone, unwired)
+tier: feature
+status: implemented
+owners: [jerry]
+depends_on: []
+last_updated: 2026-09-14
+---
+
+# Direct USB MTP/PTP Client (standalone, unwired)
 
 `src/garmin_connector/device/mtp_client.py` — `GarminMTPClient`
 
@@ -50,7 +60,7 @@ parent_handle: int
 storage_id: int
 ```
 
-## Non-goals (current)
+## Non-Goals
 - No file upload/send implementation (`SendObjectInfo`/`SendObject` opcodes defined but no public method uses them) — this client can currently only **read and delete**, not write, despite the module docstring's broader framing.
 - No `GetObject` (file download) public method either, despite the opcode being defined.
 - No integration with `GarminDeviceManager` — wiring this in as an alternative/fallback transfer strategy is a distinct, future feature-spec decision (see constitution §6).

@@ -8,13 +8,53 @@ last_updated: 2026-09-15
 
 The constitution is not itself a spec with requirements to implement — it is the **sum of the walking-skeleton specs**, plus the scope, tech stack, and architecture that frame every spec in this repository. It changes rarely and deliberately.
 
-## 1. Purpose & Goal
+## 1. Purpose, Goal & Requirements
 
-### Purpose
-A lightweight, cross-platform (Linux, Windows, macOS) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+### 1.1 Purpose & Goal
 
-### Goal
-To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The specification corpus serves as the single source of truth and blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
+- **Purpose**: A lightweight, cross-platform (Linux, Windows, macOS) local web tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+- **Goal**: To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The specification corpus serves as the single source of truth and blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
+
+### 1.2 Functional Requirements (FR)
+
+The system fulfills the following functional requirements across its walking skeleton and feature layers:
+
+- **FR-1: Cross-Platform Device Discovery**: Automatically detect connected Garmin watches across supported OS mount points (Linux GVFS/MTP & `/media`/`/mnt`, macOS `/Volumes`, Windows drive letters `A:\`–`Z:\`) without manual mount path configuration. An optional `custom_path` / `--mount` override must bypass auto-discovery.
+- **FR-2: Device Metadata Extraction**: Read and parse `GarminDevice.xml` (case-insensitive, XML namespaces stripped) to extract identifying metadata (`model_name`, `unit_id`, `software_version`, `part_number`) with graceful fallbacks on missing or malformed XML.
+- **FR-3: Subdirectory Resolution**: Locate `NEWFILES`, `COURSES`, and `ACTIVITY` directories case-insensitively, automatically inferring default paths for `NEWFILES` and `COURSES` if absent.
+- **FR-4: Route Ingestion & FIT Conversion**: Ingest `.gpx` and `.fit` route files via GUI drag-and-drop or file selection. Automatically parse GPX trackpoints/waypoints (using stdlib XML parsing) and encode them into valid Garmin binary FIT format (`.fit`) adhering to Garmin string field limits (≤ 15 bytes UTF-8) and protocol CRC checks.
+- **FR-5: Device Sideloading**: Write converted `.fit` files directly into the connected watch's `NEWFILES/` directory to trigger native Garmin course synchronization.
+- **FR-6: Watch Course Management**: List all course files residing in `COURSES/` (active) and `NEWFILES/` (pending sync) with filenames, locations, byte sizes, and UTC modified timestamps. Support deleting specific courses from device storage by filename.
+- **FR-7: Interactive Map Preview**: Parse course trackpoints from watch files or incoming routes, extract coordinate polyline arrays, and render an interactive Leaflet map preview with dark telemetry tiles and an auto-centered bounding box.
+- **FR-8: Continuous Connection Telemetry**: Provide a non-blocking 3-second client polling loop against `GET /api/device` reflecting real-time connection status (`disconnected`, `mounting`, `connected`, `model_name`).
+- **FR-9: Process & Server Management**: Provide a CLI entrypoint (`garmin-connector gui`) to launch the local HTTP server on a configurable host/port, handle auto-opening the browser, and cleanly shut down on SIGINT/SIGTERM.
+
+### 1.3 Non-Functional Requirements (NFR)
+
+The system complies with the following non-functional constraints and quality attributes:
+
+- **NFR-1: Architectural Isolation & Boundaries**:
+  - `device/detector.py` is strictly read-only (zero file write, delete, or mutation).
+  - `converter/*` is completely decoupled from device and transport logic (in-memory data structures and local file I/O only).
+  - `gui/server.py` encapsulates all HTTP/JSON transport concerns; underlying modules remain usable as a pure Python library.
+  - `gui/static/*` requires zero build steps (vanilla HTML/CSS/JS served as-is with no npm, bundlers, or transpilers).
+- **NFR-2: Fault Tolerance & Graceful Degradation**:
+  - Never terminate or crash the server process on per-request errors (invalid uploads, conversion errors, premature watch disconnection).
+  - Absence of a connected watch is a standard valid state, never an exception or HTTP 500 error.
+  - Endpoints dynamically re-resolve device state on every mutating request (`get_first_device()`) to prevent stale mount references.
+- **NFR-3: Minimal Footprint & Zero Web Frameworks**:
+  - Runtime dependencies restricted strictly to `fitparse` (for reading binary FIT files) and standard library modules (`http.server`, `xml.etree.ElementTree`).
+  - No heavyweight web frameworks (Flask, FastAPI, Django) or backend databases.
+  - Low CPU and memory footprint suited for low-power host devices.
+- **NFR-4: Hardware Protocol Conformance**:
+  - Strict adherence to Garmin FIT binary format, byte endianness, and string length limits (course and course point names null-terminated within 16-byte fields).
+  - Robust tolerance of FAT32/MTP directory casing variations.
+- **NFR-5: Spec-Driven Single-Shot Rebuildability**:
+  - The specification corpus serves as the deterministic oracle; specs must remain unambiguous enough for an autonomous agent to regenerate `src/` end-to-end.
+  - No dead code: every module described in the specs must be reachable from the CLI or HTTP API.
+  - Continuous verification: all walking-skeleton and feature contracts must pass automated tests (`pytest`) upon generation.
+
+### 1.4 Target Release & Scope
 
 **Target release:** v1.0.0 — the first single-shot generation from this spec corpus is the MVP. `pyproject.toml`'s version bumps to `1.0.0` as part of that generation.
 
@@ -53,8 +93,10 @@ flowchart TD
     end
 
     subgraph HostOS["Host OS filesystem"]
-        GVFS["/run/user/uid/gvfs (MTP)"]
-        Media["/media · /mnt (USB mass storage)"]
+        LinuxGVFS["/run/user/uid/gvfs (Linux MTP)"]
+        LinuxMedia["/media · /mnt (Linux USB)"]
+        MacMounts["/Volumes (macOS)"]
+        WinMounts["D:\, E:\, etc. (Windows)"]
     end
 
     subgraph Watch["Garmin watch"]
@@ -62,12 +104,18 @@ flowchart TD
     end
 
     FE <-- "fetch() JSON, 3s poll" --> Server
-    Detector --> GVFS
-    Detector --> Media
-    Manager --> GVFS
-    Manager --> Media
-    GVFS --- GarminDir
-    Media --- GarminDir
+    Detector --> LinuxGVFS
+    Detector --> LinuxMedia
+    Detector --> MacMounts
+    Detector --> WinMounts
+    Manager --> LinuxGVFS
+    Manager --> LinuxMedia
+    Manager --> MacMounts
+    Manager --> WinMounts
+    LinuxGVFS --- GarminDir
+    LinuxMedia --- GarminDir
+    MacMounts --- GarminDir
+    WinMounts --- GarminDir
 
     classDef skeleton fill:#0b3d91,stroke:#5b9bff,color:#fff
     class CLI,Launcher,Server,Detector,FE skeleton

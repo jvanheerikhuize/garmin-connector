@@ -25,8 +25,9 @@ Read-only discovery of connected Garmin watches on Linux across filesystem mount
 ## Requirements
 
 ### Candidate mount root discovery (`_find_candidate_roots`)
-- MUST scan `/run/user/<uid>/gvfs/` for entries whose name contains `mtp:` or `garmin` (case-insensitive); for each match, also scan one level of subdirectories (handles the common `mtp:host=.../Internal Storage/GARMIN` or `Primary/GARMIN` nesting).
-- MUST also scan these USB mass-storage style roots, one level deep, for any directory: `/media/<user>`, `/media`, `/run/media/<user>`, `/mnt`.
+- On Linux: MUST scan `/run/user/<uid>/gvfs/` for entries whose name contains `mtp:` or `garmin` (case-insensitive); for each match, also scan one level of subdirectories (handles the common `mtp:host=.../Internal Storage/GARMIN` or `Primary/GARMIN` nesting). MUST also scan USB mass-storage style roots, one level deep, for any directory: `/media/<user>`, `/media`, `/run/media/<user>`, `/mnt`.
+- On macOS: MUST scan `/Volumes` for attached devices.
+- On Windows: MUST iterate available drive letters (`A:\` to `Z:\`).
 - MUST tolerate any of these roots not existing (skip silently).
 - MUST support an explicit `custom_path` override that bypasses auto-discovery entirely.
 
@@ -77,5 +78,4 @@ activities_dir: Optional[Path]
 
 ## Non-Goals
 - No caching — every call re-scans the filesystem.
-- No Windows/macOS mount conventions.
 - No disambiguation UI when multiple devices/candidates match — only the first is ever surfaced to the rest of the app.

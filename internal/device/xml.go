@@ -12,8 +12,8 @@ type deviceXML struct {
 	XMLName         xml.Name `xml:"Device"`
 	Model           string   `xml:"Model>Description"`
 	ID              string   `xml:"Id"`
-	SoftwareVersion string   `xml:"SoftwareVersion"`
-	PartNumber      string   `xml:"PartNumber"`
+	SoftwareVersion string   `xml:"Model>SoftwareVersion"`
+	PartNumber      string   `xml:"Model>PartNumber"`
 }
 
 func parseGarminDevice(mountPath, garminDir string) (*Info, error) {

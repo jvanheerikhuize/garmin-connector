@@ -30,18 +30,29 @@ func Discover() (*Info, error) {
 	candidates = append(candidates, mntDirs...)
 
 	for _, cand := range candidates {
-		entries, err := os.ReadDir(cand)
-		if err != nil {
-			continue
-		}
-
+		// Sometimes the GARMIN folder is an immediate child of the mount,
+		// and sometimes it is behind a logical volume like "Internal Storage".
+		// We will search up to 2 levels deep for a folder named GARMIN.
+		
 		var garminDir string
-		for _, e := range entries {
-			if e.IsDir() && strings.EqualFold(e.Name(), "garmin") {
-				garminDir = filepath.Join(cand, e.Name())
-				break
+		filepath.WalkDir(cand, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return filepath.SkipDir // skip permission errors
 			}
-		}
+			
+			// If we are deeper than 2 levels from candidate, don't descend further
+			rel, _ := filepath.Rel(cand, path)
+			depth := len(strings.Split(filepath.ToSlash(rel), "/"))
+			if depth > 2 {
+				return filepath.SkipDir
+			}
+			
+			if d.IsDir() && strings.EqualFold(d.Name(), "garmin") {
+				garminDir = path
+				return filepath.SkipAll // found it, stop walking
+			}
+			return nil
+		})
 
 		if garminDir != "" {
 			return parseGarminDevice(cand, garminDir)

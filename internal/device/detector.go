@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"github.com/ganeshrvel/go-mtpx"
 )
 
 type GarminDeviceInfo struct {
@@ -168,6 +169,21 @@ func DetectDevices(customPath string) ([]GarminDeviceInfo, error) {
 		}
 	}
 
+	
+	// Also check raw MTP devices via go-mtpx (in case gvfsd-mtp is dead)
+	if customPath == "" {
+		dev, err := mtpx.Initialize(mtpx.Init{DebugMode: false})
+		if err == nil {
+			info, err2 := mtpx.FetchDeviceInfo(dev)
+			if err2 == nil {
+				devices = append(devices, GarminDeviceInfo{
+					ModelName: "Garmin " + info.Model,
+					MountPoint: "MTP:" + info.SerialNumber,
+				})
+			}
+			mtpx.Dispose(dev)
+		}
+	}
 	return devices, nil
 }
 
@@ -181,3 +197,5 @@ func GetFirstDevice(customPath string) (*GarminDeviceInfo, error) {
 	}
 	return nil, nil
 }
+
+

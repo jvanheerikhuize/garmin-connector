@@ -3,6 +3,8 @@ module garmin-connector
 go 1.22.5
 
 require (
+	github.com/ganeshrvel/go-mtpfs v1.0.4-0.20240426083057-1c3302b3c476
+	github.com/ganeshrvel/go-mtpx v0.0.0-20240426092756-18f12db021cc
 	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.10.2
 	github.com/tormoder/fit v0.15.0
@@ -11,6 +13,7 @@ require (
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/client9/misspell v0.3.4 // indirect
+	github.com/ganeshrvel/usb v0.0.0-20210103155855-14d96f5ae403 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20210914165742-4cc7213b9bc8 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

@@ -14,6 +14,17 @@ import (
 	"garmin-connector/internal/converter/types"
 )
 
+
+func isMTP(device *GarminDeviceInfo) bool {
+	return strings.HasPrefix(device.MountPoint, "MTP:") || strings.Contains(device.MountPoint, "mtp:host")
+}
+
+func FetchCourseBytes(device *GarminDeviceInfo, filename string, fullPath string) ([]byte, error) {
+	if isMTP(device) {
+		return mtpFetchCourse(filename)
+	}
+	return ioutil.ReadFile(fullPath)
+}
 type CourseFileSummary struct {
 	Filename   string    `json:"filename"`
 	FullPath   string    `json:"full_path"`
@@ -28,8 +39,29 @@ func SideloadRoute(device *GarminDeviceInfo, source []byte, ext string, sport ty
 	}
 
 	ext = strings.ToLower(ext)
-	var finalBytes []byte
+	outExt := ext
+	if ext == ".gpx" {
+		outExt = ".fit"
+	}
+	if courseName == "" {
+		courseName = "Course"
+	}
 
+	if isMTP(device) {
+		var finalBytes []byte
+		if ext == ".gpx" {
+			fitBytes, _, err := converter.ConvertGPXToFIT(source, courseName, sport)
+			if err != nil {
+				return "", err
+			}
+			finalBytes = fitBytes
+		} else {
+			finalBytes = source
+		}
+		return mtpSideload(finalBytes, courseName, outExt)
+	}
+
+	var finalBytes []byte
 	if ext == ".gpx" {
 		fitBytes, _, err := converter.ConvertGPXToFIT(source, courseName, sport)
 		if err != nil {
@@ -51,14 +83,6 @@ func SideloadRoute(device *GarminDeviceInfo, source []byte, ext string, sport ty
 		return "", err
 	}
 
-	// Always write as .fit if we converted
-	outExt := ext
-	if ext == ".gpx" {
-		outExt = ".fit"
-	}
-	if courseName == "" {
-		courseName = "Course"
-	}
 	destPath := filepath.Join(targetDir, courseName+outExt)
 	
 	if err := os.WriteFile(destPath, finalBytes, 0644); err != nil {
@@ -102,6 +126,9 @@ func ListCourses(device *GarminDeviceInfo) ([]CourseFileSummary, error) {
 	if device == nil {
 		return nil, errors.New("no Garmin device connected")
 	}
+	if isMTP(device) {
+		return mtpListCourses()
+	}
 
 	var all []CourseFileSummary
 
@@ -129,6 +156,9 @@ func ListCourses(device *GarminDeviceInfo) ([]CourseFileSummary, error) {
 func DeleteCourse(device *GarminDeviceInfo, filename string) (bool, error) {
 	if device == nil {
 		return false, errors.New("no Garmin device connected")
+	}
+	if isMTP(device) {
+		return mtpDeleteCourse(filename)
 	}
 
 	coursesDir := device.CoursesDir

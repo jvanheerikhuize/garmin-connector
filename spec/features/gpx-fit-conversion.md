@@ -115,12 +115,13 @@ u16  header_crc       = crc16(first 12 header bytes)
 **5. Course Point** — global `32`, local `4`, one definition then one data message **per course point** (section omitted entirely if there are none):
 | field | name | size | base type | value |
 |---|---|---|---|---|
-| 253 | timestamp | 4 | UINT32 | `garmin_ts(cp.timestamp)` if present, else `time_created` |
-| 1 | position_lat | 4 | SINT32 | semicircles |
-| 2 | position_long | 4 | SINT32 | semicircles |
-| 3 | distance | 4 | UINT32 | `int(cp.distance_m * 100)` (cm) |
-| 4 | type | 1 | ENUM | `CoursePointType` value |
-| 5 | name | 16 | STRING | UTF-8 name truncated to 15 bytes + `\x00`, right-padded with `\x00` to exactly 16 |
+| 1 | timestamp | 4 | UINT32 | `garmin_ts(cp.timestamp)` if present, else `time_created` |
+| 2 | position_lat | 4 | SINT32 | semicircles |
+| 3 | position_long | 4 | SINT32 | semicircles |
+| 4 | distance | 4 | UINT32 | `int(cp.distance_m * 100)` (cm) |
+| 5 | type | 1 | ENUM | `CoursePointType` value |
+| 6 | name | 16 | STRING | UTF-8 name truncated to 15 bytes + `\x00`, right-padded with `\x00` to exactly 16 |
+- Field numbers follow Garmin's published `course_point` profile (note: unlike `record`/`lap`, this message's timestamp is field `1`, not `253`). A third-party reader such as `fitparse` MUST decode `timestamp`, `position_lat`, `position_long`, `distance`, `type` and `name` by name from the emitted file.
 
 **Conversions:**
 - `garmin_ts(dt)`: naive datetimes are treated as UTC; `max(0, int(unix_seconds - 631065600))`.
@@ -213,6 +214,3 @@ convert_gpx_to_fit(gpx_path, output_fit_path=None, course_name=None, sport=Sport
 - No elevation enrichment (DEM or otherwise) — cut from v1. GPX-supplied elevation is used as-is; a future DEM-enrichment feature would need its own spec (data source, offline vs. API, caching) rather than a silent flag.
 - No multi-lap or multi-segment course support — always exactly one lap.
 - No power/heart-rate/cadence fields — course files carry only position, altitude, distance, timing, and course-point cues.
-
-## Open Questions
-- **Course Point field numbers vs. the public FIT profile.** The byte-exact table above assigns `253/1/2/3/4/5` to timestamp/lat/lon/distance/type/name, but Garmin's published `course_point` (mesg 32) profile uses `1` timestamp, `2` position_lat, `3` position_long, `4` distance, `5` type, `6` name (`253` is not defined for this message). `fitparse` consequently decodes the regenerated file's course points shifted by one field (observed 2026-09-15). The v1 regeneration reproduces the spec's layout **exactly as written**, per the MUST above. Someone with a watch needs to confirm whether cues actually appear on-device; if they don't, this table should be corrected to the profile numbering and the "byte-exact" clause re-baselined.

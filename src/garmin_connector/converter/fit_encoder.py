@@ -253,7 +253,7 @@ class FitCourseEncoder:
             out += self._definition(
                 4,
                 _MESG_COURSE_POINT,
-                [(253, 4, _BASE_UINT32), (1, 4, _BASE_SINT32), (2, 4, _BASE_SINT32), (3, 4, _BASE_UINT32), (4, 1, _BASE_ENUM), (5, 16, _BASE_STRING)],
+                [(1, 4, _BASE_UINT32), (2, 4, _BASE_SINT32), (3, 4, _BASE_SINT32), (4, 4, _BASE_UINT32), (5, 1, _BASE_ENUM), (6, 16, _BASE_STRING)],
             )
             for cp in course.course_points:
                 ts = garmin_timestamp(cp.timestamp) if cp.timestamp is not None else time_created

@@ -60,6 +60,28 @@ class TestFitEncoder(unittest.TestCase):
         expected_file_crc = struct.unpack("<H", encoded[-2:])[0]
         self.assertEqual(calculate_crc(file_content), expected_file_crc)
 
+    def test_course_point_fields_decode_by_profile_name(self):
+        from fitparse import FitFile
+
+        ts = datetime.datetime(2026, 9, 4, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        course = CourseData(
+            name="Cues",
+            points=[TrackPoint(lat=52.0, lon=4.0, distance=0.0), TrackPoint(lat=52.01, lon=4.01, distance=1000.0)],
+            course_points=[CoursePointData(lat=52.01, lon=4.01, distance=1000.0, point_type=CoursePointType.SHARP_LEFT, name="Hairpin")],
+            total_distance=1000.0,
+            created_at=ts,
+        )
+        messages = list(FitFile(FitCourseEncoder(course).encode()).get_messages("course_point"))
+        self.assertEqual(len(messages), 1)
+        fields = {d.name: d.value for d in messages[0]}
+        self.assertEqual(fields["timestamp"], ts.replace(tzinfo=None))
+        self.assertEqual(fields["position_lat"], deg_to_semicircles(52.01))
+        self.assertEqual(fields["position_long"], deg_to_semicircles(4.01))
+        self.assertEqual(fields["distance"], 1000.0)
+        self.assertEqual(fields["type"], "sharp_left")
+        self.assertEqual(fields["name"], "Hairpin")
+        self.assertNotIn("unknown_253", fields)
+
 
 if __name__ == "__main__":
     unittest.main()

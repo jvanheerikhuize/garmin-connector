@@ -5,70 +5,68 @@ tier: feature
 status: implemented
 owners: [jerry]
 depends_on: [connection-status-shell, course-management-api]
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # Course Management & Map Preview Frontend (Cyberpunk Terminal UI)
 
-`src/garmin_connector/gui/static/{index.html,app.js,styles.css,cybercore.min.css}` (partial — everything except the header/polling shell)
+`ui/src/` (React Components)
 
 Depends on: [connection-status-shell](../connection-status-shell.md), [course-management-api](course-management-api.md).
 
 ## Purpose
 
-Everything a user can actually *do* once the [connection-status-shell](../connection-status-shell.md) has confirmed a watch is connected: browse and manage courses, drag/drop GPX ingest with sport selection, delete, and preview a selected course's path on a Leaflet map — themed with the vendored CYBERCORE CSS design system (CRT scanlines, neon glow, chamfered "HUD" cards).
+Everything a user can actually *do* once the [connection-status-shell](../connection-status-shell.md) has confirmed a watch is connected: browse and manage courses, drag/drop GPX ingest with sport selection, delete, and preview a selected course's path on a Leaflet map.
 
 ## Scope
 
-**In scope:** the storage sidebar (toolbar, course list), the ingest modal and drop zone, the delete confirmation modal, the map's feature-facing behavior (draw/clear a route, empty states beyond the bare "no watch" state), toasts.
+**In scope:** `Workspace` component (sidebar, course list), ingest modal and drop zone, delete confirmation modal, map component, toasts.
 
-**Out of scope:** the header, status dot/text, and the `checkDeviceStatus` polling loop that drives this feature's `enableMap`/`disableAndResetMap`/`fetchCourses` hooks — see [connection-status-shell](../connection-status-shell.md), which this feature implements the hooks for.
-
-## Page structure (`index.html`)
-- Main grid, two columns:
-  - **Sidebar**: "Watch Storage" card with `Ingest Route` and `Refresh` buttons (both `disabled` until a device is connected) above a course list container.
-  - **Map area**: "Route Preview" card containing a Leaflet map (`#map`), an empty-state overlay (`#mapEmptyOverlay`), and a status line (`#mapInfo`).
-- Modals: **Ingest Route** (sport pills + drag/drop zone), **Confirm Delete**, both CYBERCORE `cyber-modal` components toggled via a `cyber-modal--open` class.
-- Toast notification stack (`#toastContainer`) for success/error/warning messages.
-- External assets loaded via CDN: Google Fonts (Exo 2, JetBrains Mono, Orbitron, Rajdhani), Leaflet 1.9.4 (JS+CSS) — plus locally vendored `cybercore.min.css` and `styles.css`.
+## Page structure (`App.tsx` & Components)
+- `Workspace.tsx` conditionally rendered when a device is connected.
+  - **Sidebar (`Sidebar.tsx`)**: "Watch Storage" card with `Ingest Route` and `Refresh` buttons above a `CourseList` component.
+  - **Map area (`MapPreview.tsx`)**: "Route Preview" card containing a React-Leaflet map, an empty-state overlay, and a status line.
+- Modals: `IngestModal.tsx` (sport pills + drag/drop zone), `ConfirmDeleteModal.tsx`.
+- Toast notification context/provider (`ToastContext.tsx`).
+- External libraries: `react-leaflet`, `leaflet`, `lucide-react` for icons.
 
 ## Requirements
 
-### Map behavior
-- Initialized centered on `[51.505, -0.09]` (London) at zoom 4, with zoom and attribution controls enabled.
-- Basemap tile layer: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`, subdomains `abcd`, `maxZoom: 19`, attribution `&copy; OpenStreetMap contributors &copy; CARTO`.
-- **`disableAndResetMap()`** (implements the hook [connection-status-shell](../connection-status-shell.md) calls on mounting/disconnected/error): removes any drawn track, resets view to the default center/zoom, disables all interaction (drag/zoom/keyboard), shows the empty overlay with "Connect watch via USB to enable route preview", and sets `mapInfo` to "No watch connected".
-- **`enableMap()`** (implements the hook called on connected): re-enables interaction; if no track is currently drawn, shows the empty overlay with "Select a course to preview route" and `mapInfo` "No route selected" (but only overwrites `mapInfo` if it currently reads "No watch connected", to avoid clobbering an in-progress/loaded-route message); if a track *is* drawn, hides the overlay.
-- **Mapping a course** (`mapCourse(filename)`): sets a loading message, calls `GET /api/fetch-course/<filename>`, throws on `success: false`. Clears any existing track layer first. If points returned: draws a cyan (`#00f0ff`) polyline (weight 4, opacity 0.9, class `glowing-track`), fits the map bounds to it with 30px padding, hides the overlay, sets `mapInfo` to `"Showing: <filename> (<n> trackpoints)"`. If zero points: shows the overlay with `"No GPS trackpoints found in <filename>"` and mirrors that in `mapInfo`. On any fetch/parse error: shows the overlay and `mapInfo` with `"Failed to load route: <error>"` and raises an error toast.
+### Map behavior (`MapPreview.tsx`)
+- Initialized centered on `[51.505, -0.09]` (London) at zoom 4.
+- Basemap tile layer: CARTO dark matter (`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`).
+- Disconnected state: handled by `App.tsx` unmounting the workspace.
+- Connected but no course selected: displays an overlay "Select a course to preview route".
+- Selected course (`selectedCourse` state): 
+  - Calls `GET /api/fetch-course/{filename}`.
+  - Clears existing `<Polyline>`.
+  - On points returned: renders a cyan (`#00f0ff`) `<Polyline>` and calls `map.fitBounds(bounds)`.
+  - On zero points/error: shows error overlay.
 
-### Ingest flow
-- Sport selector: three pill buttons (Cycling/Hiking/Running), single-select, `selectedSport` defaults to `"cycling"`.
-- Drop zone: click-to-browse (via hidden `<input type="file" accept=".gpx">`) or drag-and-drop; visually and functionally disabled (`pointerEvents: none`, dimmed) whenever no device is connected/mounting.
-- On file selection/drop (`handleFileUpload`):
-  - Rejects (toast error, no request sent) any filename not ending in `.gpx` (case-insensitive).
-  - Shows an in-progress toast `"Ingesting <file> for <sport>..."`.
-  - Reads the file as text (`FileReader.readAsText`), then `POST /api/sideload` with `{gpx_content, course_name: <filename without .gpx>, sport: selectedSport}`.
-  - Success: success toast `"Successfully converted & sideloaded: <filename>"`, closes the ingest modal after a 500ms delay, refreshes the course list and device status.
-  - API-reported failure (`success: false`): error toast with the server's `error` message; modal stays open.
-  - Network/transport error: error toast `"Network error: <message>"`.
+### Ingest flow (`IngestModal.tsx`)
+- Sport selector: three pill buttons (Cycling/Hiking/Running), `selectedSport` state defaults to `"cycling"`.
+- Drop zone: uses `react-dropzone` or native HTML drag events.
+- On file selection/drop:
+  - Rejects if not `.gpx`.
+  - Reads as text, POSTs to `/api/sideload`.
+  - On success: closes modal, triggers a refresh of the `CourseList` via a shared `refreshTrigger` context or callback, shows success toast.
+  - On failure: shows error toast.
 
-### Course list rendering (`fetchCourses`) (implements the hook [connection-status-shell](../connection-status-shell.md) calls when connected and the list is still empty)
-- `GET /api/courses`. Empty/no courses → placeholder text "No courses found in watch storage"; if the status text currently starts with "Connected", appends `" (0 courses)"`.
-- Non-empty: counts entries whose `location` (uppercased) contains `"NEWFILES"` vs `"COURSES"` separately; status text (only if currently starting with "Connected") becomes `"Connected: <model> (<total> courses<, N pending sync if any>)"`.
-- Each course renders as a row: a format badge (`FIT`/`GPX`, styled by extension), the `watch_path` (falls back to `/GARMIN/Courses/<filename>` if absent) as the primary label with the full local path as a tooltip, size in KB (rounded), and `Map`/`Delete` action buttons.
-- Fetch errors are logged to console only (no user-facing toast) — this is considered a secondary/background refresh, consistent with the connection-status-shell's polling error handling.
+### Course list rendering (`CourseList.tsx`)
+- Fetches `GET /api/courses` on mount and when triggered.
+- Empty/no courses → placeholder text.
+- Each course renders as a row component with format badge (`FIT`/`GPX`), `watch_path`, size, and `Map` (Preview) / `Delete` action buttons.
 
-### Deletion flow
-- `Delete` button opens the confirm modal with a message naming the file; the actual filename is held in a module-level `courseToDelete` variable, cleared on cancel/close.
-- Confirm → `DELETE /api/courses/<filename>` (percent-encoded). On success: clears any drawn map track and resets the map overlay/info text to the "no route selected" state, refreshes the course list and device status, success toast `"Deleted <filename>"`. On non-OK response: error toast `"Failed to delete <filename>"`. On network error: error toast `"Delete failed: <message>"`.
+### Deletion flow (`ConfirmDeleteModal.tsx`)
+- `Delete` button sets `courseToDelete` state and opens modal.
+- Confirm → `DELETE /api/courses/{filename}`.
+- On success: closes modal, clears `selectedCourse` if it matches, triggers list refresh, shows success toast.
 
 ### Misc UX
-- `Escape` key closes both modals (whichever is open) globally.
-- Clicking a modal's backdrop (the modal root element itself, not its dialog) closes it.
-- Toasts (`showMessage(msg, type)`): appended to a stack, auto-slide-out and remove after 4.5s; `type` is `"success" | "error" | "warning"` (anything else defaults to the warning/"Notice" styling).
+- Toasts (`useToast` hook): stacked bottom-right, auto-dismiss.
+- Modals trap focus and close on Escape or backdrop click.
 
 ## Non-Goals
-- No offline/service-worker support — requires a live connection to the local server.
-- No client-side GPX validation beyond the file-extension check — malformed GPX content surfaces only as a server-side error toast.
-- No elevation profile chart, despite the GUI module's docstring mentioning one — not implemented in the current frontend.
+- No offline/service-worker support.
+- No elevation profile chart.
 - No client-side persistence (no localStorage) — full state is re-fetched from the server on every page load.

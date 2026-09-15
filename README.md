@@ -1,7 +1,12 @@
 # Garmin Connector (`garmin-venu-x1`)
 
-A lightweight, cross-platform MVP tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch, wrapped in a Cyberpunk Terminal UI.
+### Purpose
+To provide a lightweight, cross-platform (Linux, Windows, macOS) local web tool that seamlessly connects to Garmin watches over USB. Wrapped in a Cyberpunk Terminal UI, it allows users to view connection status, automatically convert and sideload GPX routes to FIT format, manage existing files on the watch, and preview courses on an interactive map.
 
+### Goal
+To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The repository serves as a blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
+
+*(Note: This repository currently serves exclusively as a specification corpus. The code implementation is generated strictly based on the rules defined in the `spec/` directory.)*
 ## Features
 
 - **Connect & View Status**: Detects Garmin watch (via USB Mass Storage or MTP) and shows connection status and course counts in a lean web GUI.

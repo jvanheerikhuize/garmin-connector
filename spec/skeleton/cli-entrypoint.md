@@ -43,6 +43,7 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 ### Subcommand Dispatch
 - MUST expose a root command (`garmin-connector`).
 - MUST register a `status` subcommand.
+- MUST accept a `--version` flag on the root command that outputs `1.0.0`.
 - MUST print help text and exit `0` when invoked with no arguments.
 - MUST exit with a non-zero code and print usage to stderr when invoked with an unrecognized subcommand.
 

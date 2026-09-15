@@ -6,7 +6,7 @@ last_updated: 2026-09-15
 
 # Regeneration Protocol
 
-How a single-shot (re)generation of the application from `spec/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md) and the testing requirement in [constitution.md §7](constitution.md).
+How a single-shot (re)generation of the application from `spec/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md).
 
 ## Who runs it
 
@@ -16,14 +16,14 @@ A **fresh agent** — one that has never read the current codebase — in a new 
 
 ```
 spec/**                                       # the only source of truth for behavior
-examples/**                                   # fixtures the tests use
 .gitignore
 ```
 
 ## Outputs (deleted first, then regenerated from spec)
 
 ```
-src/** / cmd/** / internal/** # Application source code
+cmd/** / internal/**          # Application source code
+go.mod, go.sum                # Go build configuration
 README.md                     # Application README generated from specs
 ```
 
@@ -32,8 +32,8 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 ## Order
 
 1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
-2. Implement the walking skeleton according to [constitution.md](constitution.md). Write automated unit tests as required.
-3. Regenerate application build configuration and `README.md`.
+2. Implement the walking skeleton according to the specs in `spec/skeleton/` and the requirements in `constitution.md`. Write automated unit tests as required.
+3. Regenerate application build configuration (`go.mod`, `go.sum`) and `README.md`.
 4. Run the full gate (below). Fix until green.
 5. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
 
@@ -59,7 +59,7 @@ You are performing a single-shot regeneration of this repository from its specif
 
 Read spec/README.md, then spec/regeneration.md, then spec/constitution.md, then every other file under spec/ — in that order — before writing any code. Follow spec/regeneration.md exactly: it defines the inputs you may read, the outputs you must delete and regenerate, the order, the gap rule, and the gate.
 
-Hard rule: do not read the deleted source files from git history (no git show / git log -p / git diff against old commits). The spec is your only source for behavior. tests/ and examples/ are fixed inputs you must satisfy without modifying existing assertions.
+Hard rule: do not read the deleted source files from git history (no git show / git log -p / git diff against old commits). The spec is your only source for behavior.
 
 Work on branch rewrite/v1. Use conventional commits. When the gate in spec/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
 ```

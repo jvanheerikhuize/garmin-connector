@@ -13,7 +13,7 @@ This directory is the **single source of truth** for `garmin-venu-x1`. From now 
 
 ## Spec tiers
 
-- **`tier: skeleton`** — load-bearing for the walking skeleton/MVP. Composes `constitution.md` §2. Removing one breaks the whole app. Lives under `spec/skeleton/`.
+- **`tier: skeleton`** — load-bearing for the walking skeleton/MVP. Removing one breaks the whole app. Lives under `spec/skeleton/`.
 - **`tier: feature`** — layered on top of the skeleton (deferred until skeleton gate passes). Lives under `spec/feature/`.
 
 ## Layout

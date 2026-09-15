@@ -24,7 +24,7 @@ examples/**                                   # fixtures the tests use
 
 ```
 src/** / cmd/** / internal/** # Application source code
-README.md                     # Scaffolded from spec/templates/APP_README.md
+README.md                     # Application README generated from specs
 ```
 
 Regenerated files MUST NOT carry `// GENERATED` banners or references to this protocol — they are ordinary source files; the spec is the provenance.

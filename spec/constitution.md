@@ -22,6 +22,8 @@ Statements are verifiable assertions about the environment, hardware, or externa
 | **STM-4** | Linux dynamically mounts MTP devices via GVFS under `/run/user/<uid>/gvfs` using an `mtp:` prefix. | Verified | Linux GVFS documentation/testing | Informs `FR-1` |
 | **STM-5** | `GarminDevice.xml` contains specific metadata fields such as `Model/Description`, `Id`, `SoftwareVersion`, and `PartNumber`. | Verified | XML file inspection | Informs `FR-2` |
 | **STM-6** | `GarminDevice.xml` utilizes XML namespaces, which complicates standard parsing if not stripped. | Verified | XML file inspection | Informs `FR-2` |
+| **STM-7** | Users and external systems invoke the tool on-demand to query state, rather than connecting to a persistent background daemon. | Assumption | User research / workflow analysis | Informs `FR-3` |
+| **STM-8** | External scripts/tools require machine-readable structured output to consume device status headlessly. | Assumption | Integration requirements | Informs `FR-3` |
 
 ## 3. Requirements
 

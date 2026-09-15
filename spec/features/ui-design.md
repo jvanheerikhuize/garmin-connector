@@ -5,7 +5,7 @@ tier: feature
 status: implemented
 owners: [jerry]
 depends_on: [connection-status-shell, gui-course-frontend]
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # UI Design System & Markup Contract
@@ -64,7 +64,6 @@ Make the visual design regenerable. Everything a fresh implementer needs to prod
 - `.status-container`: flex, center, `gap: 8px`; `padding: 6px 14px`; background `--app-subpanel`; `border: 1px solid --app-border`; `--font-mono`; `0.8rem`; color `--cyber-chrome-300`; `border-radius: 3px`.
 - `.status-dot`: `8×8px`, `border-radius: 50%`, `flex-shrink: 0`. State modifiers (exhaustive, class-driven — see [connection-status-shell](../connection-status-shell.md)):
   - `.connected` → background `--cyber-green-500`, `box-shadow: 0 0 6px rgba(5,255,161,0.5)`
-  - `.mounting` → background `orange`
   - `.disconnected` → background `--cyber-chrome-500`
 
 ### 5. Layout

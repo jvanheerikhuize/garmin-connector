@@ -5,7 +5,7 @@ tier: feature
 status: implemented
 owners: [jerry]
 depends_on: []
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # GPX ↔ FIT Conversion
@@ -25,6 +25,7 @@ Parse GPX route/track files into an internal course representation, and encode t
 ### Course point (cue) type inference (`match_course_point_type`)
 - Given a waypoint's `name`, `sym`, `desc` (concatenated, lowercased), regex-match against an **ordered** list of phrase categories and return the first match: left fork → right fork → sharp left → sharp right → slight left → slight right → left → right → straight/continue/ahead → u-turn → summit/peak/top/mountain → water/drink/fountain/tap → food/restaurant/cafe/bakery/lunch → danger/warning/caution/steep → first aid/hospital/medical → else `GENERIC`.
 - Order matters: more specific phrases (e.g. "sharp left") MUST be checked before the generic "left" to avoid misclassification.
+- Matches are whole-word (`\b`-bounded regex), so e.g. "Trailhead" does not match "ahead" and "Leftover" does not match "left". The u-turn category also accepts `u turn` and `uturn`.
 
 ### GPX parsing (`parse_gpx_string` / `parse_gpx_file`)
 - Strips XML namespaces from all elements before querying (namespace-agnostic).
@@ -212,3 +213,6 @@ convert_gpx_to_fit(gpx_path, output_fit_path=None, course_name=None, sport=Sport
 - No elevation enrichment (DEM or otherwise) — cut from v1. GPX-supplied elevation is used as-is; a future DEM-enrichment feature would need its own spec (data source, offline vs. API, caching) rather than a silent flag.
 - No multi-lap or multi-segment course support — always exactly one lap.
 - No power/heart-rate/cadence fields — course files carry only position, altitude, distance, timing, and course-point cues.
+
+## Open Questions
+- **Course Point field numbers vs. the public FIT profile.** The byte-exact table above assigns `253/1/2/3/4/5` to timestamp/lat/lon/distance/type/name, but Garmin's published `course_point` (mesg 32) profile uses `1` timestamp, `2` position_lat, `3` position_long, `4` distance, `5` type, `6` name (`253` is not defined for this message). `fitparse` consequently decodes the regenerated file's course points shifted by one field (observed 2026-09-15). The v1 regeneration reproduces the spec's layout **exactly as written**, per the MUST above. Someone with a watch needs to confirm whether cues actually appear on-device; if they don't, this table should be corrected to the profile numbering and the "byte-exact" clause re-baselined.

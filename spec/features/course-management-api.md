@@ -5,7 +5,7 @@ tier: feature
 status: implemented
 owners: [jerry]
 depends_on: [gui-bootstrap, device-detection, device-manager, gpx-fit-conversion]
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # Course Management API
@@ -53,6 +53,7 @@ Used by the map-preview UI to get a `[lat, lon]` polyline for a course already o
 Request body: JSON `{"gpx_content": "<raw gpx xml>", "course_name": "<optional, default 'MVP_Course'>", "sport": "cycling"|"hiking"|"running" (default cycling, unrecognized values also fall back to cycling)}`.
 - Empty body (`Content-Length: 0`) → `400` JSON error `"Empty request"`.
 - No device → `503` JSON error `"No Garmin device connected"`.
+- Body that is not valid JSON → `400` JSON error `"Invalid JSON body: <parse error>"`.
 - Missing `gpx_content` key/empty → `400` JSON error `"Missing gpx_content"`.
 - Otherwise:
   1. Parse the GPX content string directly (not via a file) with the given name/sport.

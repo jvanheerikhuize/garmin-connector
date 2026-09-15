@@ -30,7 +30,7 @@ The minimum frontend needed to prove the walking skeleton end-to-end: load a pag
 
 ### Device status polling (`checkDeviceStatus`)
 - MUST poll `GET /api/device` every **3000ms**, plus once immediately on `DOMContentLoaded`.
-- **Connected**: reset a "missing cycles" debounce counter to 0; set internal state to `connected`; set the status dot to the connected (green) style; call the feature-owned `enableMap()` hook; call `fetchCourses()` if the course list is empty. Status text becomes `"Connected: <model_name or 'Garmin Watch'>"`.
+- **Connected**: reset a "missing cycles" debounce counter to 0; set internal state to `connected`; set the status dot to the connected (green) style; call the feature-owned `enableMap()` hook; call `fetchCourses()` if the course list is empty. Status text becomes `"Connected: <model_name or 'Garmin Watch'>"` — but only on the *transition* into `connected` (or if the text does not currently start with `Connected`); on subsequent connected polls the text is left alone so the course-count suffix appended by the feature-owned `fetchCourses()` is not clobbered every 3 seconds.
 - **Disconnected, with debounce**: if fewer than **7** consecutive missing/error polls have occurred, skip the UI update (smooths over blips). After 7 misses: status dot to disconnected (red/neutral) style; status text `"No watch connected"`; call `disableAndResetMap()`.
 - MUST NOT let a failed poll throw an uncaught exception that stops future polling.
 

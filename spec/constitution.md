@@ -26,7 +26,7 @@ The walking skeleton is not prose here — it is the sum of the specs tagged `ti
 | 1 | [cli-entrypoint](cli-entrypoint.md) | The process starts. |
 | 2 | [gui-bootstrap](gui-bootstrap.md) | It serves a page and answers `/api/device`, without crashing. |
 | 3 | [device-detection](device-detection.md) | It can truthfully sense whether a watch is attached. |
-| 4 | [connection-status-shell](connection-status-shell.md) | The page reflects that truth (disconnected / mounting / connected), continuously, without getting stuck. |
+| 4 | [connection-status-shell](connection-status-shell.md) | The page reflects that truth (disconnected / connected), continuously, without getting stuck. |
 
 Every `tier: feature` spec (under `features/`) is layered on top of this chain and must degrade gracefully to "not available" if the skeleton is intact but the feature is missing or broken — never the other way around.
 

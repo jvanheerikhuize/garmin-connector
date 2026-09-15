@@ -1,7 +1,7 @@
 ---
 id: regeneration
 title: Regeneration Protocol (single-shot rewrite runbook)
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # Regeneration Protocol
@@ -53,7 +53,7 @@ The spec is expected to be sufficient. When it isn't:
 
 - `pytest` passes in full, including `tests/test_skeleton.py` and every pre-existing test unchanged.
 - No module under `src/` is unreachable from the CLI or HTTP API (constitution §5 "no dead code").
-- Manual smoke: `garmin-connector gui --no-browser` starts, prints the URL, `curl` of `/api/device` returns `{"connected": false, "mounting": false, "model_name": null}` with no watch attached, and `/static/styles.css` is served.
+- Manual smoke: `garmin-connector gui --no-browser` starts, prints the URL, `curl` of `/api/device` returns `{"connected": false, "model_name": null}` with no watch attached, and `/static/styles.css` is served.
 - `garmin_connector.__version__ == "1.0.0"` and `pyproject.toml` agrees.
 
 ## Prompt for the fresh agent

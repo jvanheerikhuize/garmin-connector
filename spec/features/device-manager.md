@@ -28,10 +28,10 @@ Sideload, list, and delete course files (`.fit`/`.gpx`) on a detected Garmin wat
 ### Sideloading (`sideload_route`)
 - Accepts a `.gpx` or `.fit` source path, a `Sport` (default `CYCLING`), and an optional `course_name`.
 - Raises `FileNotFoundError` if the source doesn't exist.
-- `.gpx` input: convert to FIT via a temp directory (`convert_gpx_to_fit`) using the given `course_name`/`sport`, then transfer the resulting temp `.fit` file.
+- `.gpx` input: convert to FIT via a temp directory (`convert_gpx_to_fit`) using the given `course_name`/`sport`, then transfer the resulting temp `.fit` file. The temp file (and therefore the destination) is named `<source stem>.fit`.
 - `.fit` input: transfer as-is, no conversion.
 - Any other extension: raise `ValueError` naming the unsupported format; only `.gpx` and `.fit` are supported.
-- Returns the destination `Path` the file was written to (on the watch's NEWFILES directory naming).
+- Returns the destination `Path` the file was written to: `<NEWFILES dir>/<source filename, with .fit suffix for .gpx input>`.
 
 ### Transfer strategy (`_transfer_to_newfiles`, internal)
 Target directory is `device.newfiles_dir`, falling back to `device.garmin_dir / "NEWFILES"` if unset.

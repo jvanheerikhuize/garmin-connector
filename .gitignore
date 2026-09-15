@@ -40,3 +40,4 @@ env/
 data/
 logs/
 .env
+node_modules/

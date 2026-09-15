@@ -42,7 +42,11 @@ flowchart LR
     CLI["CLI (status)"] --> Detector["Device Detection (MTP / OS Mounts)"] --> Watch["Garmin Watch (GarminDevice.xml)"]
 ```
 
-## 5. Out of Scope
+## 5. Tech Stack
+
+- **Language:** Go (Golang) — Chosen to satisfy NFR-2 (zero external runtime dependencies, compiled static binary) and NFR-3.
+
+## 6. Out of Scope
 - Graphical User Interface (GUI).
 - Non-Linux operating systems (macOS, Windows).
 - Course and activity file management, conversion, or sideloading.

@@ -122,7 +122,7 @@ Make the visual design regenerable. Everything a fresh implementer needs to prod
 ### 11. Leaflet overrides (all `!important` where noted)
 - `.leaflet-container`: background `#07090e` !, font `--font-mono` !.
 - `.leaflet-bar`: `border: 1px solid --cyber-cyan-500` !, `border-radius: 2px` !, `box-shadow: 0 0 10px rgba(0,240,255,0.2)` !, `overflow: hidden`. `.leaflet-bar a`: background `--app-panel` !, color `--cyber-cyan-500` !, `border-bottom: 1px solid --app-border` !, `border-radius: 0` !, `transition: all 0.15s ease`; hover → background `--cyber-cyan-500` !, color `#000` !.
-- `.leaflet-tile-pane`: `filter: saturate(0.85) brightness(0.9)`.
+- `.leaflet-tile-pane`: `filter: invert(1) hue-rotate(180deg) brightness(0.75) contrast(0.9) saturate(0.5)` — turns the light OSM basemap into a dark, desaturated one so the cyan track and neon UI read correctly.
 - `.leaflet-control-attribution`: background `rgba(7,9,14,0.8)` !, color `--cyber-chrome-500` !, `0.65rem` !; its links `--cyber-cyan-500` !.
 - `.glowing-track` (the route polyline): `stroke: --cyber-cyan-500` !, `stroke-width: 4` !, `filter: drop-shadow(0 0 6px rgba(0,240,255,0.8))`.
 

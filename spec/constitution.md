@@ -12,7 +12,7 @@ The constitution is not itself a spec with requirements to implement — it is t
 
 ### 1.1 Purpose & Goal
 
-- **Purpose**: A lightweight, cross-platform (Linux, Windows, macOS) local web tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+- **Purpose**: A lightweight, cross-platform (Linux, Windows, macOS) CLI tool with an integrated local web GUI to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — featuring a Cyberpunk Terminal aesthetic.
 - **Goal**: To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The specification corpus serves as the single source of truth and blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
 
 ### 1.2 Functional Requirements (FR)

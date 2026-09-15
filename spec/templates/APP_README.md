@@ -1,6 +1,6 @@
 # Garmin Connector (`garmin-venu-x1`)
 
-A lightweight, cross-platform (Linux, Windows, macOS) MVP tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch, wrapped in a Cyberpunk Terminal UI.
+A lightweight, cross-platform (Linux, Windows, macOS) CLI tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch, featuring an integrated local web GUI wrapped in a Cyberpunk Terminal UI.
 
 ## Features
 

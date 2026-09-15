@@ -1,6 +1,6 @@
 # Garmin Connector (`garmin-venu-x1`) — Specification Corpus
 
-This repository serves exclusively as the **specification corpus and architectural blueprint** for `garmin-connector`, a lightweight, cross-platform (Linux, Windows, macOS) local web tool for Garmin watches.
+This repository serves exclusively as the **specification corpus and architectural blueprint** for `garmin-connector`, a lightweight, cross-platform (Linux, Windows, macOS) CLI tool with an integrated web GUI for Garmin watches.
 
 In this repository, **specs are the single source of truth**. Code is treated as a transient, generated artifact derived directly from these specifications through single-shot autonomous agent generation.
 

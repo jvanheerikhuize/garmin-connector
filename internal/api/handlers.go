@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -178,7 +179,7 @@ func handleFetchCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := device.FetchCourseBytes(dev, filename, fullPath)
+	content, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		writeError(w, 500, err.Error())
 		return

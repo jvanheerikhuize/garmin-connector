@@ -6,8 +6,8 @@ status: draft
 owners: [jerry]
 depends_on: []
 implements_requirements: [FR-1, FR-2]
-relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6]
-relies_on_assumptions: []
+relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6, FCT-7, FCT-8, FCT-9]
+relies_on_assumptions: [ASM-3, ASM-4]
 last_updated: 2026-09-15
 ---
 
@@ -19,7 +19,8 @@ last_updated: 2026-09-15
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-1` (Linux Device Discovery), `FR-2` (Device Metadata Extraction)
-- **Relies on Facts:** `FCT-3` (GARMIN directory structure), `FCT-4` (Linux GVFS paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces)
+- **Relies on Facts:** `FCT-3` (GARMIN structure), `FCT-4` (GVFS paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-7` (Mount fragmentation), `FCT-8` (MTP Casing), `FCT-9` (Multi-user EACCES)
+- **Relies on Assumptions:** `ASM-3` (Single device workflow), `ASM-4` (Graceful metadata fallback)
 
 ## Purpose
 

@@ -6,7 +6,8 @@ status: draft
 owners: [jerry]
 depends_on: [device-discovery]
 implements_requirements: [FR-3, NFR-1]
-relies_on_statements: [STM-7, STM-8]
+relies_on_facts: []
+relies_on_assumptions: [ASM-1, ASM-2]
 last_updated: 2026-09-15
 ---
 
@@ -20,7 +21,7 @@ Depends on: [device-discovery](device-discovery.md)
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-3` (CLI Status Inspection), `NFR-1` (Fault Tolerance - clean exit on no device)
-- **Relies on Statements:** `STM-7` (On-demand execution assumption), `STM-8` (Structured output assumption)
+- **Relies on Assumptions:** `ASM-1` (On-demand execution assumption), `ASM-2` (Structured output assumption)
 
 ## Purpose
 

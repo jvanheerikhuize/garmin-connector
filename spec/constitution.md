@@ -10,20 +10,27 @@ last_updated: 2026-09-15
 
 A tool to connect a modern garmin watch to a laptop to exchange files over a USB connection.
 
-## 2. Statements
+## 2. Grounding Reality
 
-Statements are verifiable assertions about the environment, hardware, or external boundaries that hold true.
+### 2.1 External Facts
+Facts are objective, verifiable truths about the external environment (hardware, third-party APIs, operating systems) that exist independently of this software.
 
-| ID | Statement | Status | Verification Method | Impact / Traces |
-|---|---|---|---|---|
-| **STM-1** | The Garmin Venu X1 only supports the MTP protocol (no USB Mass Storage support). | Verified | USB device descriptor inspection (`lsusb` / OS device query) | Informs `FR-1` |
-| **STM-2** | `GarminDevice.xml` is the file that holds the device's metadata. | Verified | File inspection within `GARMIN/` filesystem root | Informs `FR-2` |
-| **STM-3** | Garmin devices expose a `GARMIN` directory at or near the root of the MTP mount, which contains the `GarminDevice.xml` file. | Verified | Mount structure inspection | Informs `FR-1`, `FR-2` |
-| **STM-4** | Linux dynamically mounts MTP devices via GVFS under `/run/user/<uid>/gvfs` using an `mtp:` prefix. | Verified | Linux GVFS documentation/testing | Informs `FR-1` |
-| **STM-5** | `GarminDevice.xml` contains specific metadata fields such as `Model/Description`, `Id`, `SoftwareVersion`, and `PartNumber`. | Verified | XML file inspection | Informs `FR-2` |
-| **STM-6** | `GarminDevice.xml` utilizes XML namespaces, which complicates standard parsing if not stripped. | Verified | XML file inspection | Informs `FR-2` |
-| **STM-7** | Users and external systems invoke the tool on-demand to query state, rather than connecting to a persistent background daemon. | Assumption | User research / workflow analysis | Informs `FR-3` |
-| **STM-8** | External scripts/tools require machine-readable structured output to consume device status headlessly. | Assumption | Integration requirements | Informs `FR-3` |
+| ID | Fact | Verification Method | Impact / Traces |
+|---|---|---|---|
+| **FCT-1** | The Garmin Venu X1 only supports the MTP protocol (no USB Mass Storage support). | USB device descriptor inspection (`lsusb` / OS device query) | Informs `FR-1` |
+| **FCT-2** | `GarminDevice.xml` is the file that holds the device's metadata. | File inspection within `GARMIN/` filesystem root | Informs `FR-2` |
+| **FCT-3** | Garmin devices expose a `GARMIN` directory at or near the root of the MTP mount, which contains the `GarminDevice.xml` file. | Mount structure inspection | Informs `FR-1`, `FR-2` |
+| **FCT-4** | Linux dynamically mounts MTP devices via GVFS under `/run/user/<uid>/gvfs` using an `mtp:` prefix. | Linux GVFS documentation/testing | Informs `FR-1` |
+| **FCT-5** | `GarminDevice.xml` contains specific metadata fields such as `Model/Description`, `Id`, `SoftwareVersion`, and `PartNumber`. | XML file inspection | Informs `FR-2` |
+| **FCT-6** | `GarminDevice.xml` utilizes XML namespaces, which complicates standard parsing if not stripped. | XML file inspection | Informs `FR-2` |
+
+### 2.2 Assumptions
+Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
+
+| ID | Assumption | Verification Method | Impact / Traces |
+|---|---|---|---|
+| **ASM-1** | Users and external systems invoke the tool on-demand to query state, rather than connecting to a persistent background daemon. | User research / workflow analysis | Informs `FR-3` |
+| **ASM-2** | External scripts/tools require machine-readable structured output to consume device status headlessly. | Integration requirements | Informs `FR-3` |
 
 ## 3. Requirements
 

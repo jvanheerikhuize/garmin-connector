@@ -6,7 +6,8 @@ status: draft                      # draft (proposed, not yet implemented) | imp
 owners: [jerry]
 depends_on: []                     # ids of other specs this one builds on or assumes are present
 implements_requirements: []        # ids of requirements from constitution.md this spec fulfills (e.g., [FR-1, NFR-2])
-relies_on_statements: []           # ids of statements from constitution.md this spec relies upon (e.g., [STM-1, STM-2])
+relies_on_facts: []                # ids of external facts from constitution.md this spec relies upon (e.g., [FCT-1])
+relies_on_assumptions: []          # ids of assumptions from constitution.md this spec relies upon (e.g., [ASM-1])
 last_updated: YYYY-MM-DD
 ---
 
@@ -19,7 +20,8 @@ Depends on: [other-spec-title](../relative/path.md) <!-- omit this line if depen
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-X` ... <!-- omit this section if none -->
-- **Relies on Statements:** `STM-X` ... <!-- omit this section if none -->
+- **Relies on Facts:** `FCT-X` ... <!-- omit this section if none -->
+- **Relies on Assumptions:** `ASM-X` ... <!-- omit this section if none -->
 
 ## Purpose
 

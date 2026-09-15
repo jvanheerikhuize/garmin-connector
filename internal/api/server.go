@@ -37,6 +37,10 @@ func Serve(host string, port int, openBrowser bool) error {
 				// Fallback to index.html for unknown paths (client-side routing)
 				r.URL.Path = "/"
 			}
+			// Disable caching for index.html to avoid stale embed.FS responses
+			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			}
 			fileServer.ServeHTTP(w, r)
 		})
 	}

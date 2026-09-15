@@ -12,9 +12,12 @@ let missingCycles = 0;
 
 function setConnected(modelName) {
   missingCycles = 0;
+  const statusEl = document.getElementById("deviceStatus");
+  if (lastKnownState !== "connected" || !statusEl.textContent.startsWith("Connected")) {
+    statusEl.textContent = "Connected: " + (modelName || "Garmin Watch");
+  }
   lastKnownState = "connected";
   document.getElementById("statusDot").className = "status-dot connected";
-  document.getElementById("deviceStatus").textContent = "Connected: " + (modelName || "Garmin Watch");
   enableMap();
   if (courseListIsEmpty()) {
     fetchCourses();

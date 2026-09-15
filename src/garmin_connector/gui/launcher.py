@@ -28,8 +28,8 @@ def launch_gui(host: str = "127.0.0.1", port: int = 8080, open_browser: bool = T
     port = find_free_port(port)
     server = run_gui_server(host, port)
     url = f"http://{host}:{port}/"
-    print(f"Garmin Course Uploader running at {url}")
-    print("Press Ctrl+C to stop.")
+    print(f"Garmin Course Uploader running at {url}", flush=True)
+    print("Press Ctrl+C to stop.", flush=True)
     if open_browser:
         open_desktop_window(url)
     try:

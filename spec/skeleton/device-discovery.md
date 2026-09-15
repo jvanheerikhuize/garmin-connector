@@ -40,23 +40,24 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 
 ## Requirements
 
-### Filesystem Discovery (FR-1, STM-4)
+### Filesystem Discovery (FR-1, FCT-4, FCT-7)
 - MUST scan candidate paths:
   1. `/run/user/*/gvfs/*`
   2. `/media/*/*`
   3. `/mnt/*`
-- A candidate path qualifies if it contains a `GARMIN` directory (case-insensitive) as an immediate child.
-- MUST gracefully skip paths that suffer from permission denied errors without failing the overall search.
+- A candidate path qualifies if it contains a `GARMIN` directory (case-insensitive).
+- MUST search up to 2 directory levels deep within the candidate path, as MTP often hides `GARMIN` behind logical volume folders like `Internal Storage/` (FCT-3).
+- MUST gracefully skip paths that suffer from permission denied errors without failing the overall search (FCT-9).
 
-### Metadata Extraction (FR-2, STM-2, STM-3, STM-5, STM-6)
+### Metadata Extraction (FR-2, FCT-2, FCT-3, FCT-5, FCT-6)
 - Once a `GARMIN` directory is found, MUST read the `GarminDevice.xml` file (case-insensitive filename match).
 - MUST strip or ignore XML namespaces during unmarshaling (`encoding/xml` handles this when tags don't specify namespaces).
 - MUST extract the following fields from the XML:
   - `Model/Description` -> `model`
   - `Id` -> `id`
-  - `SoftwareVersion` -> `software_version`
-  - `PartNumber` -> `part_number`
-- If the XML file is missing, empty, or fails to parse, MUST fallback gracefully, yielding a partial device struct (e.g., `model="Generic Garmin"`, empty ID) rather than throwing an error.
+  - `Model/SoftwareVersion` -> `software_version`
+  - `Model/PartNumber` -> `part_number`
+- If the XML file is missing, empty, or fails to parse, MUST fallback gracefully, yielding a partial device struct (e.g., `model="Generic Garmin"`, empty ID) rather than throwing an error (ASM-4).
 
 ## Data Shapes / Interfaces
 

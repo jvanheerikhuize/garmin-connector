@@ -38,12 +38,12 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 
 ## Order
 
-1. Branch `rewrite/v2` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
+1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
 2. Regenerate the **walking skeleton** in the order given in [constitution.md §2](constitution.md): `cli-entrypoint` → `gui-bootstrap` → `device-detection` → `connection-status-shell` (the latter as the minimal `index.html` + `App.tsx` needed for the header and WebSocket connection). Write Go unit tests in `internal/` packages as required. It MUST run before any feature is started.
 3. Regenerate **features** in dependency order: `gpx-fit-conversion` → `device-manager` → `course-management-api` → `gui-course-frontend` → `ui-design` (the last produces Tailwind config and finalizes React component markup).
 4. Regenerate `go.mod`, `package.json`, `README.md`.
 5. Run the full gate (below). Fix until green.
-6. Open a **draft PR** from `rewrite/v2`. The description MUST list every spec patch made under the gap rule below.
+6. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
 
 ## Gap rule
 
@@ -57,7 +57,7 @@ The spec is expected to be sufficient. When it isn't:
 - `cd ui && npm run build` successfully compiles the React app.
 - No module under `internal/` is unreachable from the CLI or HTTP API (constitution §5 "no dead code").
 - Manual smoke: `go run ./cmd/garmin-connector gui --no-browser` starts, prints the URL, connects via WebSocket, and serves the static Vite output correctly.
-- `garmin-connector --version` returns `2.0.0`.
+- `garmin-connector --version` returns `1.0.0`.
 
 ## Prompt for the fresh agent
 
@@ -70,5 +70,5 @@ Read spec/README.md, then spec/regeneration.md, then spec/constitution.md, then 
 
 Hard rule: do not read the deleted source files from git history (no git show / git log -p / git diff against old commits). The spec is your only source for behavior. tests/ and examples/ are fixed inputs you must satisfy without modifying existing assertions.
 
-Work on branch rewrite/v2. Use conventional commits. When the gate in spec/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
+Work on branch rewrite/v1. Use conventional commits. When the gate in spec/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
 ```

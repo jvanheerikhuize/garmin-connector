@@ -55,7 +55,7 @@ The system complies with the following non-functional constraints and quality at
 
 ### 1.4 Target Release & Scope
 
-**Target release:** v2.0.0 (The Go + React Architecture Redesign) — single-shot generation from this spec corpus.
+**Target release:** v1.0.0 (The Go + React Architecture) — single-shot generation from this spec corpus.
 
 **In scope:** everything described by a spec in this directory (skeleton or feature).
 **Out of scope:** see §6.

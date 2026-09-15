@@ -6,7 +6,7 @@ last_updated: 2026-09-15
 
 # Regeneration Protocol
 
-How a single-shot (re)generation of `cmd/`, `internal/`, and `ui/` from `spec/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md) and the testing requirement in [constitution.md §7](constitution.md).
+How a single-shot (re)generation of the application from `spec/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md) and the testing requirement in [constitution.md §7](constitution.md).
 
 ## Who runs it
 
@@ -16,7 +16,6 @@ A **fresh agent** — one that has never read the current codebase — in a new 
 
 ```
 spec/**                                       # the only source of truth for behavior
-tests/**                                      # regression oracle — existing assertions MUST NOT be weakened or deleted
 examples/**                                   # fixtures the tests use
 .gitignore
 ```
@@ -24,14 +23,8 @@ examples/**                                   # fixtures the tests use
 ## Outputs (deleted first, then regenerated from spec)
 
 ```
-cmd/**                    # CLI entrypoints (main.go)
-internal/**               # API, device, converter packages
-ui/**                     # React + Vite frontend source
-embed.go                  # //go:embed directive file
-go.mod, go.sum            # Go dependencies
-package.json, package-lock.json # Frontend dependencies
-vite.config.ts            # Frontend bundler configuration
-README.md                 # Scaffolded from spec/templates/APP_README.md
+src/** / cmd/** / internal/** # Application source code
+README.md                     # Scaffolded from spec/templates/APP_README.md
 ```
 
 Regenerated files MUST NOT carry `// GENERATED` banners or references to this protocol — they are ordinary source files; the spec is the provenance.
@@ -39,11 +32,10 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 ## Order
 
 1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
-2. Regenerate the **walking skeleton** in the order given in [constitution.md §2](constitution.md): `cli-entrypoint` → `gui-bootstrap` → `device-detection` → `connection-status-shell` (the latter as the minimal `index.html` + `App.tsx` needed for the header and WebSocket connection). Write Go unit tests in `internal/` packages as required. It MUST run before any feature is started.
-3. Regenerate **features** in dependency order: `gpx-fit-conversion` → `device-manager` → `course-management-api` → `gui-course-frontend` → `ui-design` (the last produces Tailwind config and finalizes React component markup).
-4. Regenerate `go.mod`, `package.json`, `README.md`.
-5. Run the full gate (below). Fix until green.
-6. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
+2. Implement the walking skeleton according to [constitution.md](constitution.md). Write automated unit tests as required.
+3. Regenerate application build configuration and `README.md`.
+4. Run the full gate (below). Fix until green.
+5. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
 
 ## Gap rule
 
@@ -53,10 +45,9 @@ The spec is expected to be sufficient. When it isn't:
 
 ## Gate (all must hold before the PR is marked ready)
 
-- `go test ./...` passes in full for backend tests.
-- `cd ui && npm run build` successfully compiles the React app.
-- No module under `internal/` is unreachable from the CLI or HTTP API (constitution §5 "no dead code").
-- Manual smoke: `go run ./cmd/garmin-connector gui --no-browser` starts, prints the URL, connects via WebSocket, and serves the static Vite output correctly.
+- Automated tests pass in full.
+- `garmin-connector --help` cleanly displays usage and available commands.
+- `garmin-connector status` and `garmin-connector status --json` execute without errors.
 - `garmin-connector --version` returns `1.0.0`.
 
 ## Prompt for the fresh agent

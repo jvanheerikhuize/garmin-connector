@@ -5,6 +5,8 @@ tier: skeleton                     # skeleton = load-bearing for the walking ske
 status: draft                      # draft (proposed, not yet implemented) | implemented (matches src/) | deprecated (superseded, kept for history)
 owners: [jerry]
 depends_on: []                     # ids of other specs this one builds on or assumes are present
+implements_requirements: []        # ids of requirements from constitution.md this spec fulfills (e.g., [FR-1, NFR-2])
+relies_on_statements: []           # ids of statements from constitution.md this spec relies upon (e.g., [STM-1, STM-2])
 last_updated: YYYY-MM-DD
 ---
 
@@ -13,6 +15,11 @@ last_updated: YYYY-MM-DD
 `path/to/implementing/module.py` (or files, if more than one)
 
 Depends on: [other-spec-title](../relative/path.md) <!-- omit this line if depends_on is empty -->
+
+## Constitution Alignment
+
+- **Implements Requirements:** `FR-X` ... <!-- omit this section if none -->
+- **Relies on Statements:** `STM-X` ... <!-- omit this section if none -->
 
 ## Purpose
 

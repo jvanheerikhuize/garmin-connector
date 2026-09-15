@@ -10,7 +10,7 @@ The constitution is not itself a spec with requirements to implement — it is t
 
 ## 1. Purpose & Scope
 
-A lightweight, cross-platform (Linux-first) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+A lightweight, cross-platform (Linux, Windows, macOS) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
 
 **Target release:** v1.0.0 — the first single-shot generation from this spec corpus is the MVP. `pyproject.toml`'s version bumps to `1.0.0` as part of that generation.
 
@@ -49,8 +49,10 @@ flowchart TD
     end
 
     subgraph HostOS["Host OS filesystem"]
-        GVFS["/run/user/uid/gvfs (MTP)"]
-        Media["/media · /mnt (USB mass storage)"]
+        LinuxGVFS["/run/user/uid/gvfs (Linux MTP)"]
+        LinuxMedia["/media · /mnt (Linux USB)"]
+        MacMounts["/Volumes (macOS)"]
+        WinMounts["D:\, E:\, etc. (Windows)"]
     end
 
     subgraph Watch["Garmin watch"]
@@ -58,12 +60,18 @@ flowchart TD
     end
 
     FE <-- "fetch() JSON, 3s poll" --> Server
-    Detector --> GVFS
-    Detector --> Media
-    Manager --> GVFS
-    Manager --> Media
-    GVFS --- GarminDir
-    Media --- GarminDir
+    Detector --> LinuxGVFS
+    Detector --> LinuxMedia
+    Detector --> MacMounts
+    Detector --> WinMounts
+    Manager --> LinuxGVFS
+    Manager --> LinuxMedia
+    Manager --> MacMounts
+    Manager --> WinMounts
+    LinuxGVFS --- GarminDir
+    LinuxMedia --- GarminDir
+    MacMounts --- GarminDir
+    WinMounts --- GarminDir
 
     classDef skeleton fill:#0b3d91,stroke:#5b9bff,color:#fff
     class CLI,Launcher,Server,Detector,FE skeleton
@@ -141,7 +149,6 @@ garmin-venu-x1/
 
 ## 6. Explicitly out of scope (until a spec says otherwise)
 
-- Windows/macOS device detection (candidate mount roots are Linux-specific).
 - Multiple simultaneously connected watches (only the first detected device is ever used).
 - Activity file (`.fit` in `ACTIVITY/`) download/analysis — only `COURSES/` and `NEWFILES/` are managed.
 - Authentication/multi-user access to the GUI.

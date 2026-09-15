@@ -16,7 +16,7 @@ Depends on: [device-detection](../device-detection.md), [gpx-fit-conversion](gpx
 
 ## Purpose
 
-Sideload, list, and delete course files (`.fit`/`.gpx`) on a detected Garmin watch using standard POSIX filesystem operations, relying on the OS to handle mounts (FUSE for GVFS or standard mass storage).
+Sideload, list, and delete course files (`.fit`/`.gpx`) on a detected Garmin watch using standard filesystem operations, relying on the OS to handle mounts (FUSE for Linux GVFS, macOS Volumes, or Windows standard mass storage).
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Target directory is `device.newfiles_dir`, falling back to `device.garmin_dir / 
 - Non-file entries and non-`.fit`/`.gpx` files are silently skipped.
 
 ### Deletion (`delete_course`)
-- Given a filename, attempt POSIX unlink in `courses_dir` and `newfiles_dir`.
+- Given a filename, attempt file unlink in `courses_dir` and `newfiles_dir`.
 - Both directories are checked; any successful unlink counts as deleted (returns `True`). 
 - Returns `False` if the file was not found in either directory.
 

@@ -17,6 +17,9 @@ class GarminDeviceInfo:
     courses_dir: Optional[Path]
     activities_dir: Optional[Path]
 
+import platform
+import string
+
 class GarminDeviceDetector:
     @staticmethod
     def _find_candidate_roots(custom_path: Optional[str | Path] = None) -> List[Path]:
@@ -24,31 +27,48 @@ class GarminDeviceDetector:
             return [Path(custom_path)]
         
         candidates = []
-        uid = os.getuid()
-        
-        # GVFS / MTP
-        gvfs_dir = Path(f"/run/user/{uid}/gvfs")
-        if gvfs_dir.exists() and gvfs_dir.is_dir():
-            for child in gvfs_dir.iterdir():
-                if "mtp:" in child.name.lower() or "garmin" in child.name.lower():
-                    candidates.append(child)
-                    if child.is_dir():
-                        for subchild in child.iterdir():
-                            candidates.append(subchild)
-                            
-        # USB Mass Storage
-        usb_roots = [
-            Path(f"/media/{os.environ.get('USER', 'root')}"),
-            Path("/media"),
-            Path(f"/run/media/{os.environ.get('USER', 'root')}"),
-            Path("/mnt")
-        ]
-        
-        for root in usb_roots:
-            if root.exists() and root.is_dir():
-                for child in root.iterdir():
+        system = platform.system()
+
+        if system == "Linux":
+            try:
+                uid = os.getuid()
+            except AttributeError:
+                uid = 1000
+                
+            # GVFS / MTP
+            gvfs_dir = Path(f"/run/user/{uid}/gvfs")
+            if gvfs_dir.exists() and gvfs_dir.is_dir():
+                for child in gvfs_dir.iterdir():
+                    if "mtp:" in child.name.lower() or "garmin" in child.name.lower():
+                        candidates.append(child)
+                        if child.is_dir():
+                            for subchild in child.iterdir():
+                                candidates.append(subchild)
+                                
+            # USB Mass Storage
+            usb_roots = [
+                Path(f"/media/{os.environ.get('USER', 'root')}"),
+                Path("/media"),
+                Path(f"/run/media/{os.environ.get('USER', 'root')}"),
+                Path("/mnt")
+            ]
+            
+            for root in usb_roots:
+                if root.exists() and root.is_dir():
+                    for child in root.iterdir():
+                        if child.is_dir():
+                            candidates.append(child)
+        elif system == "Darwin":
+            mac_volumes = Path("/Volumes")
+            if mac_volumes.exists() and mac_volumes.is_dir():
+                for child in mac_volumes.iterdir():
                     if child.is_dir():
                         candidates.append(child)
+        elif system == "Windows":
+            for letter in string.ascii_uppercase:
+                drive = Path(f"{letter}:\\")
+                if drive.exists() and drive.is_dir():
+                    candidates.append(drive)
                         
         return candidates
 

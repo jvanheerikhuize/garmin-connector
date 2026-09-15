@@ -4,11 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Garmin Course Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/cybercore.min.css">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body>
+<body class="cyber-scanlines cyber-scanlines--fine">
   <div class="app-container">
     <header class="cyber-nav-header">
       <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="6" y="5" width="12" height="14" rx="3"></rect>
+            <path d="M10 2h4"></path>
+            <path d="M10 22h4"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </div>
         <h1 class="brand-title">Garmin Course Uploader</h1>
       </div>
       <div class="status-container">
@@ -16,8 +30,93 @@
         <span id="deviceStatus">No watch connected</span>
       </div>
     </header>
-    <main class="main-grid"></main>
+
+    <main class="main-grid">
+      <section class="sidebar-col">
+        <div class="cyber-card storage-card">
+          <div class="card-header-clean">
+            <h2 class="card-title">Watch Storage</h2>
+          </div>
+          <div class="storage-toolbar">
+            <button id="btnOpenIngestModal" class="btn btn-primary" disabled>Ingest Route</button>
+            <button id="btnRefresh" class="btn btn-secondary" disabled>Refresh</button>
+          </div>
+          <div id="courseTableBody" class="course-list-container">
+            <div class="empty-courses">Awaiting device connection...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="maparea">
+        <div class="cyber-card cyber-card--green map-card-wrapper">
+          <div class="card-header-clean">
+            <h2 class="card-title">Route Preview</h2>
+          </div>
+          <div class="map-viewport-container">
+            <div id="map"></div>
+            <div id="mapEmptyOverlay" class="map-empty-overlay">
+              <div class="empty-overlay-content">Connect watch via USB to enable route preview</div>
+            </div>
+          </div>
+          <div class="map-hud-bar">
+            <div id="mapInfo" class="hud-track-info">No route selected</div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
+
+  <div id="ingestModal" class="cyber-modal">
+    <div class="cyber-modal__dialog" style="max-width: 500px;">
+      <div class="cyber-modal__header">
+        <h3 class="cyber-modal__title">Ingest Route</h3>
+        <button id="ingestModalClose" class="cyber-modal__close" type="button" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="cyber-modal__body">
+        <div class="sideload-section">
+          <div class="sport-selector-group">
+            <span class="sport-label">Activity:</span>
+            <div class="sport-pills">
+              <button class="sport-btn active" data-sport="cycling" type="button">Cycling</button>
+              <button class="sport-btn" data-sport="hiking" type="button">Hiking</button>
+              <button class="sport-btn" data-sport="running" type="button">Running</button>
+            </div>
+          </div>
+          <div id="dropZone" class="dropzone-cyber">
+            <div class="dropzone-primary-text">Drop GPX File Here</div>
+            <div class="dropzone-subtext">or click to browse local files</div>
+            <input type="file" id="fileInput" accept=".gpx" hidden>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyber-chrome-400, #939ab0); text-align: center;">
+            GPX routes are converted to Garmin FIT courses and placed in NEWFILES for sync.
+          </div>
+        </div>
+      </div>
+      <div class="cyber-modal__footer">
+        <button id="btnCancelIngest" class="btn btn-secondary" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="cyber-modal cyber-modal--magenta">
+    <div class="cyber-modal__dialog">
+      <div class="cyber-modal__header">
+        <h3 class="cyber-modal__title">Confirm Delete</h3>
+        <button id="confirmModalClose" class="cyber-modal__close" type="button" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="cyber-modal__body">
+        <p id="confirmModalText"></p>
+      </div>
+      <div class="cyber-modal__footer">
+        <button id="btnConfirmCancel" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="btnConfirmDelete" class="btn btn-danger" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="cyber-toast-stack"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

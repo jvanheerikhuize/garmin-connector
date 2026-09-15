@@ -2,18 +2,9 @@
 
 A lightning-fast, cross-platform (Linux, Windows, macOS) single-binary CLI tool to connect to your Garmin Venu (and other watches), view its status, ingest GPX routes, and preview routes directly from the watch, featuring an embedded local web GUI wrapped in a Cyberpunk Terminal UI.
 
-## Prerequisites
-
-**CRITICAL**: You MUST set your Garmin watch to **Garmin / Mass Storage** mode before connecting it via USB. The application will not work properly over MTP (Media Transfer Protocol).
-
-1. Unplug the watch.
-2. Go to **Settings > System > USB Mode**.
-3. Select **Garmin** (or "Mass Storage").
-4. Reconnect the watch.
-
 ## Features
 
-- **Connect & View Status**: Detects Garmin watch (via USB Mass Storage) and pushes real-time connection telemetry to the GUI via WebSockets.
+- **Connect & View Status**: Detects Garmin watch (via USB Mass Storage or MTP) and pushes real-time connection telemetry to the GUI via WebSockets.
 - **Ingest GPX**: Drag and drop GPX files to auto-convert to FIT and sideload directly onto the watch.
 - **Course Manager**: List and delete existing `.fit` and `.gpx` files on the watch.
 - **Map Preview**: Select a course stored on the watch to preview its path on an interactive Leaflet map.

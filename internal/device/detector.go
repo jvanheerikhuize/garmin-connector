@@ -31,7 +31,7 @@ func getCandidateRoots() []string {
 			entries, _ := ioutil.ReadDir(gvfsPath)
 			for _, e := range entries {
 				name := strings.ToLower(e.Name())
-				if strings.Contains(name, "garmin") {
+				if strings.Contains(name, "mtp:") || strings.Contains(name, "garmin") {
 					roots = append(roots, filepath.Join(gvfsPath, e.Name()))
 				}
 			}

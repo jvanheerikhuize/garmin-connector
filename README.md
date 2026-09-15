@@ -1,39 +1,43 @@
-# Garmin Connector (`garmin-venu-x1`)
+# Garmin Connector (`garmin-venu-x1`) — Specification Corpus
 
-### Purpose
-To provide a lightweight, cross-platform (Linux, Windows, macOS) local web tool that seamlessly connects to Garmin watches over USB. Wrapped in a Cyberpunk Terminal UI, it allows users to view connection status, automatically convert and sideload GPX routes to FIT format, manage existing files on the watch, and preview courses on an interactive map.
+This repository serves exclusively as the **specification corpus and architectural blueprint** for `garmin-connector`, a lightweight, cross-platform (Linux, Windows, macOS) local web tool for Garmin watches.
 
-### Goal
-To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The repository serves as a blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
+In this repository, **specs are the single source of truth**. Code is treated as a transient, generated artifact derived directly from these specifications through single-shot autonomous agent generation.
 
-*(Note: This repository currently serves exclusively as a specification corpus. The code implementation is generated strictly based on the rules defined in the `spec/` directory.)*
-## Features
+---
 
-- **Connect & View Status**: Detects Garmin watch (via USB Mass Storage or MTP) and shows connection status and course counts in a lean web GUI.
-- **Ingest GPX**: Drag and drop GPX files to auto-convert to FIT and sideload directly onto the watch.
-- **Course Manager**: List and delete existing `.fit` and `.gpx` files on the watch.
-- **Map Preview**: Select a GPX file stored on the watch to preview its path on an interactive Leaflet map.
-- **CYBERCORE Design System**: Styled with [CYBERCORE CSS](https://sebyx07.github.io/cybercore-css/) featuring CRT scanlines, neon glows, glitch effects, chamfered HUD cards, and dark telemetry map layers.
+## Repository Map & Entry Points
 
-## Installation
+- **[Architecture & Constitution](spec/constitution.md)**: Defines the overarching Purpose & Goal, the Walking Skeleton composition, system architecture diagrams, tech stack constraints, and non-negotiable architectural boundaries.
+- **[Spec-Driven Working Agreement](spec/README.md)**: Rules of engagement, spec tiers, drift policies, and the rebuild-test philosophy.
+- **[Regeneration Protocol & Runbook](spec/regeneration.md)**: Operational guide for initiating a single-shot generation run from scratch with an autonomous agent, including fixed inputs, gates, and the agent prompt.
+- **[Spec Templates](spec/templates/)**: 
+  - [`spec-template.md`](spec/templates/spec-template.md): Template for authoring new specifications.
+  - [`APP_README.md`](spec/templates/APP_README.md): Template for the user-facing README scaffolded during application code generation.
 
-```bash
-cd ~/Repos/garmin-venu-x1
-uv pip install -e .
-```
+---
 
-*Note: For the best experience, it's recommended to use a [Nerd Font](https://www.nerdfonts.com/) (e.g. FiraCode Nerd Font, Hack Nerd Font, JetBrainsMono Nerd Font) installed on your system for the UI icons to render perfectly.*
+## Spec Tiers
 
-## Usage
+The specifications are structured in two tiers:
 
-Start the GUI server using `uv`:
-```bash
-uv run garmin-connector gui
-```
+### 1. The Walking Skeleton (`tier: skeleton`)
+These specs define the minimal, end-to-end chain required to prove the application runs and truthfully communicates with the environment:
+1. **[`spec/cli-entrypoint.md`](spec/cli-entrypoint.md)**: Process initialization and CLI argument parsing.
+2. **[`spec/gui-bootstrap.md`](spec/gui-bootstrap.md)**: HTTP server startup and health/status endpoint.
+3. **[`spec/device-detection.md`](spec/device-detection.md)**: Read-only detection of connected watches across OS mount roots.
+4. **[`spec/connection-status-shell.md`](spec/connection-status-shell.md)**: Frontend shell reflecting real-time connection state.
 
-Alternatively, activate the virtual environment first:
-```bash
-source .venv/bin/activate
-garmin-connector gui
-```
-Then open `http://127.0.0.1:8080` in your browser.
+### 2. Feature Specs (`tier: feature`)
+Modular capabilities layered atop the skeleton that degrade gracefully if unavailable:
+- **[`spec/features/device-manager.md`](spec/features/device-manager.md)**: File operations (sideloading, listing, deleting courses on watch storage).
+- **[`spec/features/gpx-fit-conversion.md`](spec/features/gpx-fit-conversion.md)**: In-memory GPX parsing and binary FIT encoding.
+- **[`spec/features/course-management-api.md`](spec/features/course-management-api.md)**: REST endpoints for file upload, deletion, and preview.
+- **[`spec/features/gui-course-frontend.md`](spec/features/gui-course-frontend.md)**: Course manager UI interactions, course list rendering, and Leaflet preview.
+- **[`spec/features/ui-design.md`](spec/features/ui-design.md)**: CYBERCORE styling, HUD layout, design tokens, and markup contracts.
+
+---
+
+## Generating the Application
+
+To scaffold or regenerate the implementation code from this spec corpus, refer to the prompt and step-by-step instructions in [`spec/regeneration.md`](spec/regeneration.md).

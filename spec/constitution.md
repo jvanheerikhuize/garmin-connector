@@ -8,9 +8,13 @@ last_updated: 2026-09-15
 
 The constitution is not itself a spec with requirements to implement — it is the **sum of the walking-skeleton specs**, plus the scope, tech stack, and architecture that frame every spec in this repository. It changes rarely and deliberately.
 
-## 1. Purpose & Scope
+## 1. Purpose & Goal
 
-A lightweight, cross-platform (Linux-first) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+### Purpose
+A lightweight, cross-platform (Linux, Windows, macOS) tool to connect to a Garmin Venu (or compatible) watch over USB, view connection status, ingest GPX routes (auto-converted to FIT), manage course files on the watch, and preview a selected course's path on a map — delivered as a local web GUI with a Cyberpunk Terminal aesthetic.
+
+### Goal
+To deliver a strictly spec-driven, fault-tolerant MVP that adheres to a "walking skeleton" architecture. The specification corpus serves as the single source of truth and blueprint for single-shot AI code generation, enforcing rigid architectural boundaries—keeping device detection read-only, isolating HTTP concerns, and maintaining zero-dependency frontend code—so the resulting application degrades gracefully and remains resilient.
 
 **Target release:** v1.0.0 — the first single-shot generation from this spec corpus is the MVP. `pyproject.toml`'s version bumps to `1.0.0` as part of that generation.
 
@@ -141,7 +145,6 @@ garmin-venu-x1/
 
 ## 6. Explicitly out of scope (until a spec says otherwise)
 
-- Windows/macOS device detection (candidate mount roots are Linux-specific).
 - Multiple simultaneously connected watches (only the first detected device is ever used).
 - Activity file (`.fit` in `ACTIVITY/`) download/analysis — only `COURSES/` and `NEWFILES/` are managed.
 - Authentication/multi-user access to the GUI.

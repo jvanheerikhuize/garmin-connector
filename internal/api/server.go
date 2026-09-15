@@ -62,6 +62,27 @@ func Serve(host string, port int, openBrowser bool) error {
 		}
 	})
 
+	mux.HandleFunc("/api/courses", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			handleGetCourses(w, r)
+		}
+	})
+	mux.HandleFunc("/api/courses/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" {
+			handleDeleteCourse(w, r)
+		}
+	})
+	mux.HandleFunc("/api/sideload", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			handleSideload(w, r)
+		}
+	})
+	mux.HandleFunc("/api/fetch-course/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			handleFetchCourse(w, r)
+		}
+	})
+
 	// WS /api/ws
 	mux.HandleFunc("/api/ws", wsHandler)
 

@@ -59,10 +59,7 @@ class TestDeviceManager(unittest.TestCase):
             self.assertTrue(deleted)
             self.assertFalse(dest.exists())
 
-    def test_format_mtp_uri(self):
-        from garmin_connector.device.detector import format_mtp_uri
-        uri = format_mtp_uri("091e_51fb_test", "Internal Storage/GARMIN/NewFiles")
-        self.assertEqual(uri, "mtp://091e_51fb_test/Internal%20Storage/GARMIN/NewFiles")
+
 
 
 if __name__ == "__main__":

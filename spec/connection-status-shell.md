@@ -10,46 +10,51 @@ last_updated: 2026-09-15
 
 # Connection Status Shell
 
-`src/garmin_connector/gui/static/{index.html,app.js}` (partial — header + polling only)
+`ui/src/App.tsx` and `ui/src/components/ConnectionStatus.tsx`
 
 Depends on: [gui-bootstrap](gui-bootstrap.md).
 
 ## Purpose
 
-The minimum frontend needed to prove the walking skeleton end-to-end: load a page, ask the server whether a watch is connected, and reflect that truthfully and continuously. 
+The minimum frontend needed to prove the walking skeleton end-to-end: load a React page, establish a WebSocket connection with the Go server, and reflect the watch's connection status truthfully and continuously in real-time.
 
 ## Scope
 
-**In scope:** the header/status markup, the device-status polling loop, and the seams (`enableMap()`, `disableAndResetMap()`, `fetchCourses()`) it calls into on feature-owned code.
+**In scope:** React app shell, WebSocket context/hook, header status component, and conditional rendering of the main application workspace.
 
 ## Requirements
 
-### Page shell markup
-- MUST render a header containing a brand title and a connection status indicator: a status dot element (`#statusDot`) and a status text element (`#deviceStatus`).
-- MUST render the overall page structure (header + main content area).
+### Page shell markup (`App.tsx`)
+- MUST render a header containing a brand title (Cyberpunk aesthetic) and a connection status indicator component.
+- MUST conditionally render the `Workspace` component only when a device is connected. Otherwise, it renders a `WaitingForDevice` cyberpunk scanline view.
 
-### Device status polling (`checkDeviceStatus`)
-- MUST poll `GET /api/device` every **3000ms**, plus once immediately on `DOMContentLoaded`.
-- **Connected**: reset a "missing cycles" debounce counter to 0; set internal state to `connected`; set the status dot to the connected (green) style; call the feature-owned `enableMap()` hook; call `fetchCourses()` if the course list is empty. Status text becomes `"Connected: <model_name or 'Garmin Watch'>"`.
-- **Disconnected, with debounce**: if fewer than **7** consecutive missing/error polls have occurred, skip the UI update (smooths over blips). After 7 misses: status dot to disconnected (red/neutral) style; status text `"No watch connected"`; call `disableAndResetMap()`.
-- MUST NOT let a failed poll throw an uncaught exception that stops future polling.
+### Device status syncing (`useWebSocket` hook)
+- MUST connect to `ws://<host>:<port>/api/ws` on mount.
+- MUST handle incoming `device_status` payloads and update React state (`connected`, `modelName`, `mountPoint`).
+- MUST automatically attempt to reconnect with backoff if the WebSocket connection drops.
+- A "disconnected" state instantly removes the course list and disables the map preview.
+- A "connected" state triggers a fetch to `/api/courses` (owned by the course management feature).
 
-### Status dot styling
-- Driven entirely by a CSS class name:
-  - `status-dot connected` (green)
-  - `status-dot disconnected` (grey/neutral)
+### Status dot styling (`ConnectionStatus.tsx`)
+- Driven entirely by React component state and Tailwind CSS classes:
+  - Connected: glowing green dot (`bg-green-500 shadow-[0_0_8px_rgba(34,197,94,1)]`).
+  - Disconnected: neutral/red dot (`bg-red-500 opacity-50`).
 
 ## Data Shapes / Interfaces
 
-Internal state machine:
-```
-lastKnownState: "connected" | "disconnected"
-missingCycles: int   # debounce threshold = 7
+React Context / State:
+```typescript
+interface DeviceState {
+  connected: boolean;
+  modelName: string | null;
+  mountPoint: string | null;
+}
 ```
 
-Hooks this shell calls but does not define:
-```
-enableMap()             # called on "connected"
-disableAndResetMap()    # called on "disconnected"
-fetchCourses()          # called on "connected" if list is empty
+WebSocket Messages:
+```typescript
+interface WsMessage {
+  type: "device_status" | "error";
+  payload: any;
+}
 ```

@@ -10,72 +10,63 @@ last_updated: 2026-09-15
 
 # Device Detection
 
-`src/garmin_connector/device/detector.py` — `GarminDeviceDetector`
+`internal/device/detector.go` and `internal/device/watcher.go`
 
 ## Purpose
 
-Read-only discovery of connected Garmin watches on Linux across filesystem mounts (FUSE/mass-storage), without requiring the user to know or supply a mount path. This is the sensing half of the walking skeleton: without it, nothing else in the app can know a watch exists.
+Read-only discovery of connected Garmin watches across Windows, Linux, and macOS. Provides both a one-shot polling method and an event-driven `fsnotify` / OS hook watcher that feeds WebSockets for real-time reactivity.
 
 ## Scope
 
-**In scope:** locating a connected watch's `GARMIN/` directory via POSIX mounts and reading its identifying metadata.
+**In scope:** Locating a connected watch's `GARMIN/` directory, reading its identifying metadata, and emitting connect/disconnect events to a Go channel.
 
-**Out of scope:** anything that writes to the watch or host filesystem (see [device-manager](features/device-manager.md)); anything HTTP-facing (see [gui-bootstrap](gui-bootstrap.md)).
+**Out of scope:** File mutation, HTTP/WebSocket transports.
 
 ## Requirements
 
-### Candidate mount root discovery (`_find_candidate_roots`)
-- MUST scan `/run/user/<uid>/gvfs/` for entries whose name contains `mtp:` or `garmin` (case-insensitive); for each match, also scan one level of subdirectories (handles the common `mtp:host=.../Internal Storage/GARMIN` or `Primary/GARMIN` nesting).
-- MUST also scan these USB mass-storage style roots, one level deep, for any directory: `/media/<user>`, `/media`, `/run/media/<user>`, `/mnt`.
-- MUST tolerate any of these roots not existing (skip silently).
+### Candidate mount root discovery
+- On Linux: Scan `/run/user/<uid>/gvfs/` for entries containing `mtp:` or `garmin` (case-insensitive). Scan `/media/<user>`, `/media`, `/run/media/<user>`, `/mnt`.
+- On macOS: Scan `/Volumes`.
+- On Windows: Iterate available drive letters (`A:\` to `Z:\`).
 - MUST support an explicit `custom_path` override that bypasses auto-discovery entirely.
 
 ### GARMIN directory resolution
-- A candidate root qualifies if it either *is* a directory literally named `GARMIN` (case-insensitive) or *contains* one as an immediate child.
-- Candidates without a `GARMIN` directory MUST be gracefully discarded without crashing or returning unbound variables. Watches mounted via MTP often expose sibling folders (like `Audiobooks`, `Music`, `Podcasts`) alongside `GARMIN` inside the `Internal Storage` or `Primary` volumes, and these must be cleanly ignored.
+- A candidate root qualifies if it either *is* a directory named `GARMIN` (case-insensitive) or *contains* one as an immediate child.
 
-### Device metadata parsing (`_parse_garmin_xml`)
-- MUST look for `GarminDevice.xml`, `GARMIN.XML`, `garmindevice.xml`, `garmin.xml` (first match wins) inside the `GARMIN` directory.
-- MUST strip XML namespaces before querying so watches with differing namespace URIs still parse.
-- Extracts, with fallbacks: model name (`Model/Description` → `Description`, default `"Garmin Device"`), unit ID (`Id` → `Unit/Id`), software version (`SoftwareVersion` → `App/Version/VersionRss`), part number (`Model/PartNumber`).
-- MUST NOT raise if the XML is missing or malformed — return `("Garmin Device", None, None, None)` on any parse failure. If no XML file is found at all, use `("Garmin Generic", None, None, None)` instead.
+### Device metadata parsing
+- Parse `GarminDevice.xml` (case-insensitive) inside the `GARMIN` directory.
+- Extract `Model/Description`, `Id`, `SoftwareVersion`, `PartNumber`.
+- Fallbacks: If no XML, return `"Garmin Generic"`.
 
-### Subdirectory resolution
-- Detects `NEWFILES`, `COURSES`, `ACTIVITY` subdirectories case-insensitively by scanning immediate children.
-- If `NEWFILES` or `COURSES` don't exist yet, MUST still populate them as the *expected* path (`garmin_dir / "NEWFILES"` etc.) rather than `None`, so downstream code can create them on demand. `ACTIVITY` has no such fallback — stays `None` if absent.
+### Event-Driven Watcher (`watcher.go`)
+- Must expose a `Watch(ctx context.Context, updates chan<- DeviceEvent)` function.
+- `DeviceEvent` struct: `{ Connected bool, Device *GarminDeviceInfo }`.
+- Under the hood, this can use a periodic ticker (e.g., 2 seconds) *internally* to avoid complex OS-specific volume mount hook setups, but it must only emit to the channel when the state *changes*. This abstracts the polling away from the HTTP/WebSocket layer.
 
 ### Public API
-- `detect_devices(custom_path=None) -> List[GarminDeviceInfo]` — full scan, returns one entry per candidate root that resolved a GARMIN directory.
-- `get_first_device(custom_path=None) -> Optional[GarminDeviceInfo]` — convenience wrapper returning the first result or `None`.
-- MUST NOT raise for permission errors or missing paths anywhere in this scan — best-effort, silent skip.
+- `DetectDevices(customPath string) ([]GarminDeviceInfo, error)`
+- `GetFirstDevice(customPath string) (*GarminDeviceInfo, error)`
+- `WatchDevices(ctx context.Context) <-chan DeviceEvent`
 
 ## Data Shapes / Interfaces
 
-`device/detector.py`:
-```
-class GarminDeviceDetector:        # all classmethods/staticmethods, no instance state
-    detect_devices(custom_path=None) -> List[GarminDeviceInfo]
-    get_first_device(custom_path=None) -> Optional[GarminDeviceInfo]
-```
+```go
+type GarminDeviceInfo struct {
+    ModelName       string `json:"model_name"`
+    UnitID          string `json:"unit_id,omitempty"`
+    SoftwareVersion string `json:"software_version,omitempty"`
+    PartNumber      string `json:"part_number,omitempty"`
+    MountPoint      string `json:"mount_point"`
+    GarminDir       string `json:"-"`
+    NewFilesDir     string `json:"-"`
+    CoursesDir      string `json:"-"`
+}
 
-`device/__init__.py` re-exports: `GarminDeviceDetector, GarminDeviceInfo, GarminDeviceManager`.
-
-`garmin_connector/__init__.py` exposes `__version__`.
-
-`GarminDeviceInfo`:
-```
-model_name: str
-unit_id: Optional[str]
-software_version: Optional[str]
-part_number: Optional[str]
-mount_point: Path            # the candidate root (or its parent if GARMIN dir == candidate itself)
-garmin_dir: Path
-newfiles_dir: Optional[Path]
-courses_dir: Optional[Path]
-activities_dir: Optional[Path]
+type DeviceEvent struct {
+    Connected bool
+    Device    *GarminDeviceInfo
+}
 ```
 
 ## Non-Goals
-- No caching — every call re-scans the filesystem.
-- No Windows/macOS mount conventions.
-- No disambiguation UI when multiple devices/candidates match — only the first is ever surfaced to the rest of the app.
+- No disambiguation UI when multiple devices match — only the first is surfaced.

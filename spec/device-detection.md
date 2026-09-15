@@ -5,7 +5,7 @@ tier: skeleton
 status: implemented
 owners: [jerry]
 depends_on: []
-last_updated: 2026-09-14
+last_updated: 2026-09-15
 ---
 
 # Device Detection
@@ -14,25 +14,25 @@ last_updated: 2026-09-14
 
 ## Purpose
 
-Read-only discovery of connected Garmin watches on Linux, across both USB Mass Storage and MTP/GVFS mount styles, without requiring the user to know or supply a mount path. This is the sensing half of the walking skeleton: without it, nothing else in the app can know a watch exists.
+Read-only discovery of connected Garmin watches on Linux across filesystem mounts (FUSE/mass-storage), without requiring the user to know or supply a mount path. This is the sensing half of the walking skeleton: without it, nothing else in the app can know a watch exists.
 
 ## Scope
 
-**In scope:** locating a connected watch's `GARMIN/` directory and reading its identifying metadata.
+**In scope:** locating a connected watch's `GARMIN/` directory via POSIX mounts and reading its identifying metadata.
 
 **Out of scope:** anything that writes to the watch or host filesystem (see [device-manager](features/device-manager.md)); anything HTTP-facing (see [gui-bootstrap](gui-bootstrap.md)).
 
 ## Requirements
 
 ### Candidate mount root discovery (`_find_candidate_roots`)
-- MUST scan `/run/user/<uid>/gvfs/` for entries whose name contains `mtp:` or `garmin` (case-insensitive); for each match, also scan one level of subdirectories (handles the common `mtp:host=.../Primary/GARMIN` nesting).
+- MUST scan `/run/user/<uid>/gvfs/` for entries whose name contains `mtp:` or `garmin` (case-insensitive); for each match, also scan one level of subdirectories (handles the common `mtp:host=.../Internal Storage/GARMIN` or `Primary/GARMIN` nesting).
 - MUST also scan these USB mass-storage style roots, one level deep, for any directory: `/media/<user>`, `/media`, `/run/media/<user>`, `/mnt`.
 - MUST tolerate any of these roots not existing (skip silently).
 - MUST support an explicit `custom_path` override that bypasses auto-discovery entirely.
 
 ### GARMIN directory resolution
 - A candidate root qualifies if it either *is* a directory literally named `GARMIN` (case-insensitive) or *contains* one as an immediate child.
-- Candidates without a `GARMIN` directory are discarded.
+- Candidates without a `GARMIN` directory MUST be gracefully discarded without crashing or returning unbound variables. Watches mounted via MTP often expose sibling folders (like `Audiobooks`, `Music`, `Podcasts`) alongside `GARMIN` inside the `Internal Storage` or `Primary` volumes, and these must be cleanly ignored.
 
 ### Device metadata parsing (`_parse_garmin_xml`)
 - MUST look for `GarminDevice.xml`, `GARMIN.XML`, `garmindevice.xml`, `garmin.xml` (first match wins) inside the `GARMIN` directory.
@@ -44,34 +44,23 @@ Read-only discovery of connected Garmin watches on Linux, across both USB Mass S
 - Detects `NEWFILES`, `COURSES`, `ACTIVITY` subdirectories case-insensitively by scanning immediate children.
 - If `NEWFILES` or `COURSES` don't exist yet, MUST still populate them as the *expected* path (`garmin_dir / "NEWFILES"` etc.) rather than `None`, so downstream code can create them on demand. `ACTIVITY` has no such fallback — stays `None` if absent.
 
-### MTP URI construction
-- A candidate is classified `is_mtp` if `"mtp"` or `"gvfs"` appears anywhere in its path (case-insensitive).
-- For MTP candidates, MUST locate the `mtp:host=...` path segment and derive a GIO-compatible URI (`mtp://<host>/<percent-encoded-relative-path>`) for the Garmin dir, NEWFILES, and COURSES, via `format_mtp_uri`.
-- Path segments are percent-encoded individually (not the full path) via `urllib.parse.quote`, preserving `/` separators.
-- If the host can't be resolved from the path, MUST fall back to a best-guess URI assuming `Internal Storage/GARMIN` as the relative root.
-
 ### Public API
-- `detect_devices(custom_path=None) -> List[GarminDeviceInfo]` — full scan, returns one entry per candidate root that resolved a GARMIN directory (there can be more than one if multiple candidates matched).
+- `detect_devices(custom_path=None) -> List[GarminDeviceInfo]` — full scan, returns one entry per candidate root that resolved a GARMIN directory.
 - `get_first_device(custom_path=None) -> Optional[GarminDeviceInfo]` — convenience wrapper returning the first result or `None`.
-- `check_raw_usb() -> dict` — inspects `/sys/bus/usb/devices/*/idVendor` + `idProduct` for Garmin's USB vendor ID (`091e`), independent of any filesystem mount. Returns `{"detected": True, "vid", "pid", "is_protocol_mode": <pid == "0003">, "sysfs_path"}` or `{"detected": False}`. Used by the GUI to distinguish "no device at all" from "device physically attached but not yet mounted" (`is_protocol_mode` further distinguishes Garmin's transfer-protocol handshake mode, PID `0003`, from MTP mode).
 - MUST NOT raise for permission errors or missing paths anywhere in this scan — best-effort, silent skip.
 
 ## Data Shapes / Interfaces
 
 `device/detector.py`:
 ```
-format_mtp_uri(host: str, rel_path: Path | str) -> str
-    # "mtp://" + host + "/" + "/".join(urllib.parse.quote(part) for part in Path(rel_path).parts)
-    # e.g. ("091e_51fb_test", "Internal Storage/GARMIN/NewFiles") -> "mtp://091e_51fb_test/Internal%20Storage/GARMIN/NewFiles"
 class GarminDeviceDetector:        # all classmethods/staticmethods, no instance state
     detect_devices(custom_path=None) -> List[GarminDeviceInfo]
     get_first_device(custom_path=None) -> Optional[GarminDeviceInfo]
-    check_raw_usb() -> dict
 ```
 
-`device/__init__.py` re-exports: `GarminDeviceDetector, GarminDeviceInfo, GarminDeviceManager` (the last from `device/manager.py`).
+`device/__init__.py` re-exports: `GarminDeviceDetector, GarminDeviceInfo, GarminDeviceManager`.
 
-`garmin_connector/__init__.py` exposes `__version__` (must equal `pyproject.toml`'s version) and performs the import-time GIO setup specified in [device-manager](features/device-manager.md).
+`garmin_connector/__init__.py` exposes `__version__`.
 
 `GarminDeviceInfo`:
 ```
@@ -84,10 +73,6 @@ garmin_dir: Path
 newfiles_dir: Optional[Path]
 courses_dir: Optional[Path]
 activities_dir: Optional[Path]
-is_mtp: bool
-gio_uri: Optional[str]
-gio_newfiles_uri: Optional[str]
-gio_courses_uri: Optional[str]
 ```
 
 ## Non-Goals

@@ -79,15 +79,12 @@ class GarminGUIRequestHandler(BaseHTTPRequestHandler):
                     "model_name": device.model_name,
                     "unit_id": device.unit_id,
                     "mount_point": str(device.mount_point),
-                    "is_mtp": device.is_mtp,
-                    "mounting": False,
                 })
             else:
-                raw_usb = GarminDeviceDetector.check_raw_usb()
-                if raw_usb.get("detected"):
-                    self._send_json({"connected": False, "mounting": True, "model_name": None})
-                else:
-                    self._send_json({"connected": False, "mounting": False, "model_name": None})
+                self._send_json({
+                    "connected": False,
+                    "model_name": None,
+                })
             return
 
         # API: List Courses

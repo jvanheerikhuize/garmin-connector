@@ -127,7 +127,6 @@ garmin-venu-x1/
 - Dev dependency: `pytest`.
 - No web framework (Flask/FastAPI/etc.) — `http.server.HTTPServer` + `BaseHTTPRequestHandler` only.
 - No frontend framework/bundler — vanilla JS, Leaflet.js (CDN) for mapping, CYBERCORE CSS (vendored `cybercore.min.css`) for styling, Google Fonts (Exo 2, JetBrains Mono, Orbitron, Rajdhani) via CDN.
-- Optional runtime dependency `PyGObject`/`gi` (GIO/GVFS bindings) and the `gio` CLI, used opportunistically for MTP transfers on Linux; both have graceful fallbacks. Both depend on the import-time `GIO_MODULE_DIR` setup specified in [device-manager](features/device-manager.md).
 
 ## 5. Cross-cutting invariants
 

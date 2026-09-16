@@ -12,4 +12,4 @@
 - If an Assumption or Fact is now orphaned (used nowhere else), consider removing it from `constitution.md` to keep the domain model clean.
 
 ## Step 3: Code Cleanup
-- Run `spec/workflows/regeneration.md`. The agent will read the specs, notice the feature is marked `deprecated`, and safely remove the corresponding application code and tests.
+- Run `specs/workflows/regeneration.md`. The agent will read the specs, notice the feature is marked `deprecated`, and safely remove the corresponding application code and tests.

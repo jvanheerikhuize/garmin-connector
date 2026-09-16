@@ -9,7 +9,7 @@
 
 ## Step 2: Inheritance & Causality Check
 Ask the following questions. If the answer is yes, draft them and link their `Source / Origin` column to this new `REQ-X`.
-- **Does this require new Tech Stack changes?** (If yes, draft an ADR in `spec/adrs/` linking back to the requirement).
+- **Does this require new Tech Stack changes?** (If yes, draft an ADR in `specs/adrs/` linking back to the requirement).
 - **Does this rely on unknown variables or user behaviors?** (If yes, draft new `ASM-X` Assumptions).
 - **Does this rely on external truths (APIs, hardware, OS)?** (If yes, draft new `FCT-X` Facts).
 
@@ -18,7 +18,7 @@ Ask the following questions. If the answer is yes, draft them and link their `So
 - Insert any new Assumptions or Facts generated from Step 2 into their respective tables in `constitution.md`, using the new `REQ-X` ID in the `Source / Origin` column.
 
 ## Step 4: Downstream Specs
-- If this requirement requires a new feature, duplicate `spec/templates/spec-template.md` into `spec/feature/<feature-name>.md`.
+- If this requirement requires a new feature, duplicate `specs/templates/spec-template.md` into `specs/<namespace>/<spec-name>.md`.
 - If this modifies an existing feature, update its spec file.
 - Update the frontmatter of the affected specs:
   - Add the new `REQ-X` to `implements_requirements`.

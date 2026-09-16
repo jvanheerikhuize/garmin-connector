@@ -6,7 +6,7 @@
 - Resist the urge to dive into the application source code to write a quick `if/else` statement. Code is a byproduct of the spec; changing code directly introduces "spec drift".
 
 ## Step 2: Identify the Spec Gap
-- Locate the specific file in `spec/skeleton/` or `spec/feature/` that governs this behavior.
+- Locate the specific file in `specs/skeleton/` or `specs/feature/` that governs this behavior.
 - Determine why the bug happened:
   - Was a Data Shape missing a nullable field?
   - Was an explicit `MUST` requirement missing for the edge case?

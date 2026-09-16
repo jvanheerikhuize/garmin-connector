@@ -149,16 +149,16 @@ Example output when disconnected:
 
 ## Architecture & Specifications
 
-This repository is governed by formal specifications located in the `spec/` directory:
+This repository is governed by formal specifications located in the `specs/` directory:
 
-- [Constitution](spec/constitution.md): Core requirements, grounding reality, facts, and assumptions.
-- [Tech Stack](spec/tech-stack.md): The current implementation technologies and mappings.
-- [Architecture Decision Records (ADRs)](spec/adrs/): Historical record of technical decisions.
-- [CLI Entrypoint Spec](spec/skeleton/cli-entrypoint.md): Command dispatch and output contract.
-- [Device Discovery Spec](spec/skeleton/device-discovery.md): Filesystem traversal and XML parsing rules.
-- [File Browser Spec](spec/feature/file-browser.md): Read-only filesystem inspection (`ls`, `tree`).
-- [Device Info Spec](spec/feature/device-info.md): Detailed device diagnostics, storage, and Connect IQ inventory (`info`).
-- [Regeneration Protocol](spec/workflows/regeneration.md): Runbook for spec-driven regeneration and quality gates.
+- [Constitution](specs/constitution.md): Core requirements, grounding reality, facts, and assumptions.
+- [Tech Stack](specs/tech-stack.md): The current implementation technologies and mappings.
+- [Architecture Decision Records (ADRs)](specs/adrs/): Historical record of technical decisions.
+- [CLI Entrypoint Spec](specs/cli/cli-entrypoint.md): Command dispatch and output contract.
+- [Device Discovery Spec](specs/core/device-discovery.md): Filesystem traversal and XML parsing rules.
+- [File Browser Spec](specs/cli/file-browser.md): Read-only filesystem inspection (`ls`, `tree`).
+- [Device Info Spec](specs/cli/device-info.md): Detailed device diagnostics, storage, and Connect IQ inventory (`info`).
+- [Regeneration Protocol](specs/workflows/regeneration.md): Runbook for spec-driven regeneration and quality gates.
 
 ## License
 

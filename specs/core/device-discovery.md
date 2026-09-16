@@ -1,7 +1,7 @@
 ---
 id: device-discovery
 title: Device Discovery and Metadata Extraction
-tier: skeleton
+namespace: core
 status: implemented
 owners: [jerry]
 depends_on: []

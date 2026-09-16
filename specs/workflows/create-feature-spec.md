@@ -3,7 +3,7 @@
 **Trigger:** A Requirement (`REQ-X`) from the Constitution is ready to be detailed into actionable, testable software behavior.
 
 ## Step 1: Scaffold the Spec
-- Duplicate `spec/templates/spec-template.md` into either `spec/skeleton/` (if core/MVP) or `spec/feature/` (if layered/optional).
+- Duplicate `specs/templates/spec-template.md` into the appropriate `specs/<namespace>/` folder.
 - Rename the file to describe the feature (e.g., `export-csv.md`).
 
 ## Step 2: Frontmatter & Traceability
@@ -17,4 +17,4 @@
 
 ## Step 4: Implementation
 - Review the spec for gaps or ambiguities.
-- Once approved, run `spec/workflows/regeneration.md` to instruct the agent/developer to implement the spec in code.
+- Once approved, run `specs/workflows/regeneration.md` to instruct the agent/developer to implement the spec in code.

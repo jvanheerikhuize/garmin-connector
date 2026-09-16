@@ -1,7 +1,7 @@
 ---
 id: cli-entrypoint
 title: CLI Entrypoint and Status Command
-tier: skeleton
+namespace: cli
 status: implemented
 owners: [jerry]
 depends_on: [device-discovery]
@@ -16,7 +16,7 @@ last_updated: 2026-09-15
 `cmd/garmin-connector/main.go`
 `internal/cli/status.go`
 
-Depends on: [device-discovery](device-discovery.md)
+Depends on: [device-discovery](../core/device-discovery.md)
 
 ## Constitution Alignment
 

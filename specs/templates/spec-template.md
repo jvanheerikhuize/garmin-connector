@@ -1,7 +1,7 @@
 ---
 id: kebab-case-id                  # stable, matches filename without extension; never renamed once referenced by depends_on elsewhere
 title: Human-Readable Title
-tier: skeleton                     # skeleton = load-bearing for the walking skeleton/MVP | feature = layered on top, can be removed without breaking the skeleton
+namespace: my-namespace/sub-namespace # Logical grouping for this spec (e.g., core, cli/commands, gui/login)
 status: draft                      # draft (proposed, not yet implemented) | implemented (matches codebase) | deprecated (superseded, kept for history)
 owners: [jerry]
 depends_on: []                     # ids of other specs this one builds on or assumes are present
@@ -62,4 +62,4 @@ Explicit exclusions — things a reasonable implementer might assume are in scop
 
 ## Open Questions
 
-Unresolved decisions blocking full confidence in the "rebuild test" (see [spec/README.md](../README.md)). Delete this section if there are none — don't leave it as a placeholder.
+Unresolved decisions blocking full confidence in the "rebuild test" (see [specs/README.md](../README.md)). Delete this section if there are none — don't leave it as a placeholder.

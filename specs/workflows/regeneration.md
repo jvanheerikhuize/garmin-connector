@@ -6,7 +6,7 @@ last_updated: 2026-09-15
 
 # Regeneration Protocol
 
-How a single-shot (re)generation of the application from `spec/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md).
+How a single-shot (re)generation of the application from `specs/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md).
 
 ## Who runs it
 
@@ -15,7 +15,7 @@ A **fresh agent** — one that has never read the current codebase — in a new 
 ## Inputs (read-only for the regenerating agent)
 
 ```
-spec/**                                       # the only source of truth for behavior
+specs/**                                       # the only source of truth for behavior
 .gitignore
 ```
 
@@ -32,8 +32,8 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 ## Order
 
 1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
-2. Implement the walking skeleton according to the specs in `spec/skeleton/` and the requirements in `constitution.md`. Write automated unit tests as required.
-3. Implement layered feature specs in `spec/feature/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
+2. Implement the walking skeleton according to the specs in `specs/core/` and the requirements in `constitution.md`. Write automated unit tests as required.
+3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
 4. Regenerate application build configuration based on `tech-stack.md` and generate `README.md`.
 5. Run the full gate (below). Fix until green.
 6. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
@@ -60,9 +60,9 @@ Copy verbatim into a new session started in the repo root on a clean `main`:
 ```
 You are performing a single-shot regeneration of this repository from its specification.
 
-Read spec/README.md, then spec/tech-stack.md, then spec/workflows/regeneration.md, then spec/constitution.md, then every other file under spec/ — in that order — before writing any code. Follow spec/workflows/regeneration.md exactly: it defines the inputs you may read, the outputs you must delete and regenerate, the order, the gap rule, and the gate.
+Read specs/README.md, then specs/tech-stack.md, then specs/workflows/regeneration.md, then specs/constitution.md, then every other file under specs/ — in that order — before writing any code. Follow specs/workflows/regeneration.md exactly: it defines the inputs you may read, the outputs you must delete and regenerate, the order, the gap rule, and the gate.
 
 Hard rule: do not read the deleted source files from git history (no git show / git log -p / git diff against old commits). The spec is your only source for behavior.
 
-Work on branch rewrite/v1. Use conventional commits. When the gate in spec/workflows/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
+Work on branch rewrite/v1. Use conventional commits. When the gate in specs/workflows/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
 ```

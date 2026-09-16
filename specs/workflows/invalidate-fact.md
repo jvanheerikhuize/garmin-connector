@@ -8,7 +8,7 @@
 - Document the reason and date of invalidation.
 
 ## Step 2: Traceability Impact Assessment
-- Perform a global search (`grep`) across the `spec/` directory for `FCT-X`.
+- Perform a global search (`grep`) across the `specs/` directory for `FCT-X`.
 - Identify all Feature Specs, Skeleton Specs, and ADRs that list `FCT-X` in their `relies_on_facts` frontmatter.
 
 ## Step 3: Triage and Adapt
@@ -19,4 +19,4 @@
 
 ## Step 4: Spec Update & Regeneration
 - Rewrite the affected feature specs to accommodate the new reality.
-- Trigger `spec/workflows/regeneration.md` to instruct the agent to update the implementation to match the new spec.
+- Trigger `specs/workflows/regeneration.md` to instruct the agent to update the implementation to match the new spec.

@@ -1,7 +1,7 @@
 ---
 id: file-browser
 title: File Browser (ls / tree)
-tier: feature
+namespace: cli
 status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
@@ -17,7 +17,7 @@ last_updated: 2026-09-16
 `internal/cli/tree.go`
 `internal/device/fs.go`
 
-Depends on: [CLI Entrypoint](../skeleton/cli-entrypoint.md), [Device Discovery](../skeleton/device-discovery.md)
+Depends on: [CLI Entrypoint](cli-entrypoint.md), [Device Discovery](../core/device-discovery.md)
 
 ## Constitution Alignment
 

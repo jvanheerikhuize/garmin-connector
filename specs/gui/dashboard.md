@@ -2,7 +2,7 @@
 id: dashboard
 title: Web GUI Dashboard
 namespace: gui
-status: draft
+status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery, device-info]
 implements_requirements: [FR-7]

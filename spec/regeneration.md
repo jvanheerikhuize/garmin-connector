@@ -33,9 +33,10 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 
 1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
 2. Implement the walking skeleton according to the specs in `spec/skeleton/` and the requirements in `constitution.md`. Write automated unit tests as required.
-3. Regenerate application build configuration (`go.mod`, `go.sum`) and `README.md`.
-4. Run the full gate (below). Fix until green.
-5. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
+3. Implement layered feature specs in `spec/feature/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
+4. Regenerate application build configuration (`go.mod`, `go.sum`) and `README.md`.
+5. Run the full gate (below). Fix until green.
+6. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
 
 ## Gap rule
 
@@ -45,9 +46,11 @@ The spec is expected to be sufficient. When it isn't:
 
 ## Gate (all must hold before the PR is marked ready)
 
-- Automated tests pass in full.
-- `garmin-connector --help` cleanly displays usage and available commands.
+- Automated tests pass in full (`go test -v ./...`).
+- `garmin-connector --help` cleanly displays usage and available commands (`status`, `info`, `ls`, `tree`).
 - `garmin-connector status` and `garmin-connector status --json` execute without errors.
+- `garmin-connector info` and `garmin-connector info --json` execute without errors.
+- `garmin-connector ls` and `garmin-connector tree` execute without errors.
 - `garmin-connector --version` returns `1.0.0`.
 
 ## Prompt for the fresh agent

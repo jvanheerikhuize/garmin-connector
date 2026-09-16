@@ -2,7 +2,7 @@
 id: cli-entrypoint
 title: CLI Entrypoint and Status Command
 tier: skeleton
-status: draft
+status: implemented
 owners: [jerry]
 depends_on: [device-discovery]
 implements_requirements: [FR-3, NFR-1]

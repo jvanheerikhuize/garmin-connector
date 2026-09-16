@@ -5,7 +5,7 @@ tier: feature
 status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
-implements_requirements: []
+implements_requirements: [FR-5]
 relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6]
 relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4]
 last_updated: 2026-09-16
@@ -14,7 +14,7 @@ last_updated: 2026-09-16
 # Device Detailed Information (`info`)
 
 `internal/cli/info.go`
-`internal/device/info.go`
+`internal/device/detailed.go`
 `internal/device/storage.go`
 `internal/device/apps.go`
 
@@ -22,6 +22,7 @@ Depends on: [CLI Entrypoint](../skeleton/cli-entrypoint.md), [Device Discovery](
 
 ## Constitution Alignment
 
+- **Implements Requirements:** `FR-5` (Detailed Diagnostics and Storage Inspection)
 - **Relies on Facts:** `FCT-2` (`GarminDevice.xml`), `FCT-4` (GVFS paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces)
 - **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output), `ASM-3` (Single device workflow), `ASM-4` (Graceful degradation)
 
@@ -58,8 +59,8 @@ Extracts rich hardware, storage, and software inventory from a connected Garmin 
   - `total_bytes` (uint64)
   - `free_bytes` (uint64)
   - `used_bytes` (uint64)
-  - `used_percentage` (float64, 0.0 to 100.0)
-- In human-readable output, storage sizes MUST be formatted in human-friendly units (e.g. `GiB` or `GB`).
+  - `used_percentage` (float64, 0.0 to 100.0, rounded to 1 decimal place)
+- In human-readable output, storage sizes MUST be formatted in human-friendly units (e.g. `GB` or `MB`).
 
 ### Connect IQ App Inventory
 - MUST parse the `<IQAppExt>` block inside `<Extensions>` in `GarminDevice.xml` if present.
@@ -76,10 +77,10 @@ Extracts rich hardware, storage, and software inventory from a connected Garmin 
 - If `<IQAppExt>` is not present, `apps` MUST default to an empty list rather than failing.
 
 ### Component Firmware Versions
-- MUST extract known subsystem firmware versions from `<UpdateFile>` entries in `GarminDevice.xml`:
-  - `gps_version` (string)
-  - `wireless_version` (string, BLE/ANT)
-  - `sensor_hub_version` (string)
+- MUST extract subsystem firmware versions from `<UpdateFile>` entries located inside `<MassStorageMode>` in `GarminDevice.xml`:
+  - `gps_version` (string): from entry where `<FileName>` contains `gup4603` or `gps`. Format is `<Major>.<Minor>`.
+  - `wireless_version` (string): from entry where `<FileName>` contains `gup3651`, `ble`, or `ant`. Format is `<Major>.<Minor>`.
+  - `sensor_hub_version` (string): from entry where `<FileName>` contains `gup4605` or `sensor`. Format is `<Major>.<Minor>`.
 - If specific component records are absent, their version fields MUST be empty strings.
 
 ## Data Shapes / Interfaces

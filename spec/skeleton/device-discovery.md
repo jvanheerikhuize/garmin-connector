@@ -2,7 +2,7 @@
 id: device-discovery
 title: Device Discovery and Metadata Extraction
 tier: skeleton
-status: draft
+status: implemented
 owners: [jerry]
 depends_on: []
 implements_requirements: [FR-1, FR-2]

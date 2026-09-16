@@ -36,6 +36,8 @@ specs/
 │   ├── course-upload.md
 │   ├── device-info.md
 │   └── file-browser.md
+├── gui/                           # web gui specs namespace
+│   └── dashboard.md
 └── templates/
     └── spec-template.md           # starting point for every new spec
 ```

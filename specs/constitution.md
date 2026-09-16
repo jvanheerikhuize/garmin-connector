@@ -43,6 +43,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 | **ASM-5** | Product Decision | For file inspection, basic filesystem structure and metadata (name, size, modification time) are sufficient; complete POSIX file semantics are unnecessary. | Product decision | Scopes `FR-4` |
 | **ASM-6** | UX Principle | Deep recursive directory traversal is only useful if it returns quickly; imposing limits prevents the CLI from hanging indefinitely on MTP endpoints. | User experience | Scopes `FR-4` |
 | **ASM-7** | Product Decision | The user is responsible for providing well-formed course files; restricting uploads by file extension (`.fit`, `.gpx`) is sufficient, and deep file schema validation is unnecessary. | Product decision | Scopes `FR-6` |
+| **ASM-8** | User Preference | Users seeking a graphical interface prefer launching an on-demand local web server bound to localhost accessible via a standard web browser, without background daemon requirements. | User request | Informs `FR-7` |
 
 ## 3. Requirements
 
@@ -53,6 +54,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 - **FR-4: Read-Only Filesystem Inspection**: Provide CLI commands (`ls`, `tree`) to explore the watch's internal filesystem structure and basic metadata without modifying contents.
 - **FR-5: Detailed Diagnostics and Storage Inspection**: Provide a CLI command (`garmin-connector info`) to report real-time filesystem capacity metrics, installed Connect IQ applications, and sub-component firmware versions in human-readable text or a machine-readable structured data format.
 - **FR-6: Course Upload**: Provide a CLI command (`garmin-connector upload <file>`) to transfer a route/course file to the watch's incoming directory (e.g., `GARMIN/NewFiles/`), allowing the device to process it upon disconnection.
+- **FR-7: Web-Based GUI Dashboard**: Provide an on-demand local web server (e.g., `garmin-connector web`) that serves an interactive, responsive browser dashboard displaying real-time watch connection status, storage capacity metrics, and device diagnostics, backed by local JSON API endpoints.
 
 ### 3.2 Non-Functional Requirements
 - **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state (exits `0`), never an exception. Unexpected disconnects or missing metadata must not cause unhandled crashes.
@@ -63,10 +65,12 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 
 ```mermaid
 flowchart LR
-    CLI["CLI (status, info, ls, tree, upload)"] --> Detector["Device Detection (MTP / OS Mounts)"] --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
+    CLI["CLI (status, info, ls, tree, upload)"] --> Detector["Device Detection (MTP / OS Mounts)"]
+    Web["Web GUI Server (Dashboard)"] --> Detector
+    Detector --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
 ```
 
 ## 5. Out of Scope
-- Graphical User Interface (GUI).
+- Native desktop GUI frameworks (e.g., GTK, Qt, Electron) — GUI is provided strictly via local browser interface.
 - Non-Linux operating systems (macOS, Windows).
 - Multiple simultaneously connected watches.

@@ -6,6 +6,7 @@ A lightweight, zero-runtime-dependency CLI tool to connect modern Garmin watches
 
 - **Automatic Device Discovery**: Scans standard Linux MTP and mount paths (`/run/user/<uid>/gvfs`, `/media`, `/mnt`) without manual configuration.
 - **Metadata Extraction**: Reads and parses `GarminDevice.xml`, extracting model description, unique unit ID, software version, and part number.
+- **Detailed Diagnostics & Storage**: Inspect storage capacity, installed Connect IQ apps, and component firmware via `info`.
 - **File Browser**: Inspect watch directories and files directly from the CLI using `ls` and `tree`, with case-insensitive path resolution and dotfile filtering.
 - **CLI & Machine-Readable Output**: Inspect status interactively or output structured JSON (`--json`) for automated scripting.
 - **Fault-Tolerant**: Cleanly exits with code `0` when no device is connected, with graceful fallbacks on missing or unreadable metadata.
@@ -63,6 +64,38 @@ Example output when no device is detected:
 No Garmin device detected.
 ```
 
+### Detailed Device Diagnostics (`info`)
+
+Inspect filesystem capacity, installed Connect IQ applications, and sub-component firmware versions:
+
+```bash
+./garmin-connector info
+```
+
+Example output:
+```text
+Device:   Venu X1 (ID: 3617019779)
+Software: v1829 (Part: 006-B4603-00)
+Mount:    /run/user/1000/gvfs/mtp:host=091e_51fb_0000d7975783
+
+Storage:
+  Total: 31.06 GB
+  Used:  14.69 GB (47.3%)
+  Free:  16.37 GB
+
+Components:
+  GPS:        v11.02
+  Wireless:   v29.27
+  Sensor Hub: v1.02
+
+Connect IQ (VM: 6.0.3, 5/32 apps):
+  - Connect IQ Store (watch-app, v67)
+  - Goals 8 (watchface, v38)
+  - FaceIt2 (watchface, v40)
+  - HikeField v2 (data-field, v23)
+  - Spotify (audio-content-provider-app, v72)
+```
+
 ### File Browser (`ls` / `tree`)
 
 You can inspect the filesystem of your connected watch without opening a graphical file manager. Paths are resolved relative to the root of the watch's internal storage (the parent of the `GARMIN` folder).
@@ -87,6 +120,7 @@ Structured JSON output for scripts and integrations:
 
 ```bash
 ./garmin-connector status --json
+./garmin-connector info --json
 ./garmin-connector ls --json
 ./garmin-connector tree --json
 ```
@@ -121,6 +155,7 @@ This repository is governed by formal specifications located in the `spec/` dire
 - [CLI Entrypoint Spec](spec/skeleton/cli-entrypoint.md): Command dispatch and output contract.
 - [Device Discovery Spec](spec/skeleton/device-discovery.md): Filesystem traversal and XML parsing rules.
 - [File Browser Spec](spec/feature/file-browser.md): Read-only filesystem inspection (`ls`, `tree`).
+- [Device Info Spec](spec/feature/device-info.md): Detailed device diagnostics, storage, and Connect IQ inventory (`info`).
 - [Regeneration Protocol](spec/regeneration.md): Runbook for spec-driven regeneration and quality gates.
 
 ## License

@@ -18,6 +18,7 @@ func NewRootCommand() *cobra.Command {
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
 	rootCmd.AddCommand(NewStatusCommand())
+	rootCmd.AddCommand(NewInfoCommand())
 	rootCmd.AddCommand(NewLsCommand())
 	rootCmd.AddCommand(NewTreeCommand())
 

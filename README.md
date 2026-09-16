@@ -40,6 +40,7 @@ Every command accepts `--json` for machine-readable output and exits `0` when no
 | `info` | Everything `status` shows plus storage usage, Connect IQ apps and GPS/wireless/sensor-hub firmware versions. |
 | `ls [path]` | List one directory of the watch (defaults to the storage root). |
 | `tree [path]` | Recursive listing, 3 levels deep by default. |
+| `upload <file>` | Upload a course file (`.fit` or `.gpx`) to `GARMIN/NewFiles/`. |
 
 ### `status`
 
@@ -167,6 +168,17 @@ $ garmin-connector ls --json garmin/courses
 ```
 
 A path that doesn't exist on the watch prints an error to stderr and exits `1`.
+
+### `upload`
+
+Uploads a `.fit` or `.gpx` course file directly into the watch's incoming `GARMIN/NewFiles/` folder. When the watch is disconnected from USB, it will automatically process the course.
+
+```sh
+$ garmin-connector upload my_course.gpx
+Course my_course.gpx uploaded successfully.
+```
+
+If no watch is connected, the file extension is not `.fit`/`.gpx`, or the local file is unreadable, `garmin-connector upload` prints an error to stderr and exits with a non-zero code.
 
 ### Exit codes
 

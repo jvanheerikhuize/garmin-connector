@@ -33,6 +33,7 @@ specs/
 │   └── device-discovery.md
 ├── cli/                           # cli specs namespace
 │   ├── cli-entrypoint.md
+│   ├── course-upload.md
 │   ├── device-info.md
 │   └── file-browser.md
 └── templates/

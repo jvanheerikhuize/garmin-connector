@@ -33,7 +33,7 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 
 1. Branch `rewrite/v1` from `main`. First commit: clear the outputs listed above from the working tree (`rm -rf cmd/ internal/ go.mod go.sum; git rm README.md`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
 2. Implement the walking skeleton according to the specs in `specs/core/` and the requirements in `constitution.md`. Write automated unit tests as required.
-3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
+3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`, `course-upload.md`) and their corresponding unit tests.
 4. Regenerate application build configuration based on `tech-stack.md` and generate `README.md`.
 5. Run the full gate (below). Fix until green.
 6. Perform the **constitution review** (below) and, where a workflow is triggered, run it.
@@ -48,7 +48,7 @@ The spec is expected to be sufficient. When it isn't:
 ## Gate (all must hold before the PR is marked ready)
 
 - Automated tests pass in full (using the test command standard for the chosen `tech-stack.md`).
-- `garmin-connector --help` cleanly displays usage and available commands (`status`, `info`, `ls`, `tree`).
+- `garmin-connector --help` cleanly displays usage and available commands (`status`, `info`, `ls`, `tree`, `upload`).
 - `garmin-connector status` and `garmin-connector status --json` execute without errors.
 - `garmin-connector info` and `garmin-connector info --json` execute without errors.
 - `garmin-connector ls` and `garmin-connector tree` execute without errors.

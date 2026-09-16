@@ -28,6 +28,8 @@ Facts are objective, verifiable truths about the external environment (hardware,
 | **FCT-9** | OS Security | Scanning wildcard paths like `/run/user/*` on a multi-user Linux system triggers OS-level `EACCES` (Permission Denied) errors. | OS security model | Informs `FR-1` |
 | **FCT-10** | MTP Protocol | MTP file traversal is significantly slower than local disk access, causing severe latency on deep recursive directory scans. | MTP protocol limits | Informs `FR-4` |
 | **FCT-11** | MTP Protocol | MTP does not reliably expose standard POSIX metadata (symlinks, permissions, ownership). | MTP protocol limits | Informs `FR-4` |
+| **FCT-12** | Physical Reality | Garmin watches process new courses by reading compatible files (e.g., `.fit`, `.gpx`) placed into the `GARMIN/NewFiles/` directory on the internal storage. | Hardware documentation / testing | Informs `FR-6` |
+| **FCT-13** | OS (Linux) | GVFS FUSE mounts for MTP devices do not support standard POSIX file creation (`open(O_CREAT)` returns `EOPNOTSUPP`), requiring file transfers over GVFS to use GVFS D-Bus Push operations. | Empirical verification on GVFS MTP mount | Informs `FR-6` |
 
 ### 2.2 Assumptions
 Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
@@ -40,6 +42,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 | **ASM-4** | Product Decision | Knowing a device is connected is more valuable than strict metadata accuracy; graceful degradation is preferred over a hard failure. | Product decision | Scopes `FR-2`, `FR-5` |
 | **ASM-5** | Product Decision | For file inspection, basic filesystem structure and metadata (name, size, modification time) are sufficient; complete POSIX file semantics are unnecessary. | Product decision | Scopes `FR-4` |
 | **ASM-6** | UX Principle | Deep recursive directory traversal is only useful if it returns quickly; imposing limits prevents the CLI from hanging indefinitely on MTP endpoints. | User experience | Scopes `FR-4` |
+| **ASM-7** | Product Decision | The user is responsible for providing well-formed course files; restricting uploads by file extension (`.fit`, `.gpx`) is sufficient, and deep file schema validation is unnecessary. | Product decision | Scopes `FR-6` |
 
 ## 3. Requirements
 
@@ -49,6 +52,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 - **FR-3: CLI Status Inspection**: Provide a CLI command (`garmin-connector status`) to inspect and report device connection status and metadata to stdout in human-readable text or a machine-readable structured data format.
 - **FR-4: Read-Only Filesystem Inspection**: Provide CLI commands (`ls`, `tree`) to explore the watch's internal filesystem structure and basic metadata without modifying contents.
 - **FR-5: Detailed Diagnostics and Storage Inspection**: Provide a CLI command (`garmin-connector info`) to report real-time filesystem capacity metrics, installed Connect IQ applications, and sub-component firmware versions in human-readable text or a machine-readable structured data format.
+- **FR-6: Course Upload**: Provide a CLI command (`garmin-connector upload <file>`) to transfer a route/course file to the watch's incoming directory (e.g., `GARMIN/NewFiles/`), allowing the device to process it upon disconnection.
 
 ### 3.2 Non-Functional Requirements
 - **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state (exits `0`), never an exception. Unexpected disconnects or missing metadata must not cause unhandled crashes.
@@ -59,11 +63,10 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 
 ```mermaid
 flowchart LR
-    CLI["CLI (status, info, ls, tree)"] --> Detector["Device Detection (MTP / OS Mounts)"] --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
+    CLI["CLI (status, info, ls, tree, upload)"] --> Detector["Device Detection (MTP / OS Mounts)"] --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
 ```
 
 ## 5. Out of Scope
 - Graphical User Interface (GUI).
 - Non-Linux operating systems (macOS, Windows).
-- Course and activity file management, conversion, or sideloading.
 - Multiple simultaneously connected watches.

@@ -1,7 +1,7 @@
 ---
 id: regeneration
 title: Regeneration Protocol (single-shot rewrite runbook)
-last_updated: 2026-09-15
+last_updated: 2026-09-16
 ---
 
 # Regeneration Protocol
@@ -36,7 +36,8 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
 4. Regenerate application build configuration based on `tech-stack.md` and generate `README.md`.
 5. Run the full gate (below). Fix until green.
-6. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below.
+6. Perform the **constitution review** (below) and, where a workflow is triggered, run it.
+7. Open a **draft PR** from `rewrite/v1`. The description MUST list every spec patch made under the gap rule below and MUST contain the constitution review table.
 
 ## Gap rule
 
@@ -52,6 +53,25 @@ The spec is expected to be sufficient. When it isn't:
 - `garmin-connector info` and `garmin-connector info --json` execute without errors.
 - `garmin-connector ls` and `garmin-connector tree` execute without errors.
 - `garmin-connector --version` returns `1.0.0`.
+- The constitution review below has been performed and its table is in the PR description.
+
+## Constitution review (part of the gate)
+
+A regeneration run is also an experiment: the gate commands run against a real machine and — whenever one is plugged in — a real watch. That evidence must flow back into `constitution.md`, otherwise its facts and assumptions silently age. Before the PR is marked ready the agent MUST:
+
+1. **Classify every row** of `constitution.md` §2.1 (Facts) and §2.2 (Assumptions), and every requirement in §3, against what the run actually observed. Exactly one verdict per row:
+   - **confirmed** — the run observed the statement to hold (name the command/file/value that shows it);
+   - **contradicted** — the run observed it to fail;
+   - **refined** — it holds, but the run learned a more precise or narrower statement;
+   - **weakened** — not contradicted, but the run's evidence does not support the strength of the claim (e.g. a "severe" effect that did not reproduce);
+   - **not exercised** — the run produced no evidence either way (product decisions, user-behaviour claims, environments not available on this machine).
+2. **Trigger the lifecycle workflows** where their conditions are met, in the same branch:
+   - a **contradicted** fact → [invalidate-fact.md](invalidate-fact.md);
+   - an assumption **proven true by empirical observation** (not merely "consistent with one run") → [validate-assumption.md](validate-assumption.md);
+   - a **refined** or **weakened** row → propose the new wording as a diff in the PR description. `constitution.md` changes deliberately: do **not** apply the wording change silently — the reviewer applies or rejects it.
+3. **Record the table** in the PR description under a `## Constitution review` heading, with the evidence column filled for every row that is not "not exercised" (device model and software version, command run, observed value, timing where relevant). State explicitly which workflows were triggered, or that none were.
+
+A run whose PR carries no constitution review has not passed the gate, even if every command above is green. Gathering evidence MAY require extra commands beyond the gate list (e.g. timing `tree --depth N`, `ls -ld /run/user/*`, inspecting the raw `GarminDevice.xml`); those are read-only and permitted.
 
 ## Prompt for the fresh agent
 
@@ -64,5 +84,5 @@ Read specs/README.md, then specs/tech-stack.md, then specs/workflows/regeneratio
 
 Hard rule: do not read the deleted source files from git history (no git show / git log -p / git diff against old commits). The spec is your only source for behavior.
 
-Work on branch rewrite/v1. Use conventional commits. When the gate in specs/workflows/regeneration.md passes, open a draft PR and list every spec patch you made under the gap rule. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
+Work on branch rewrite/v1. Use conventional commits. When the gate in specs/workflows/regeneration.md passes, perform the constitution review it defines, then open a draft PR that lists every spec patch you made under the gap rule and contains the constitution review table. If you hit a real ambiguity, record it as an Open Question in the relevant spec and stop rather than guess.
 ```

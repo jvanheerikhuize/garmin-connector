@@ -40,3 +40,9 @@ env/
 data/
 logs/
 .env
+
+# Go build artifacts
+/garmin-connector
+*.exe
+*.test
+*.out

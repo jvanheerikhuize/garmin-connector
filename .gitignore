@@ -46,3 +46,10 @@ logs/
 *.exe
 *.test
 *.out
+
+# AI Compiled Output (Spec-Driven Dev)
+cmd/
+internal/
+go.mod
+go.sum
+main.go

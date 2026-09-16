@@ -13,7 +13,7 @@ last_updated: YYYY-MM-DD
 
 # <Title>
 
-`path/to/implementing/module.py` (or files, if more than one)
+`path/to/implementing/module` (or files, if more than one)
 
 Depends on: [other-spec-title](../relative/path.md) <!-- omit this line if depends_on is empty -->
 

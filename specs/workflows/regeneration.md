@@ -31,7 +31,7 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 
 ## Order
 
-1. Branch `rewrite/v1` from `main`. First commit: delete the outputs listed above (`git rm`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
+1. Branch `rewrite/v1` from `main`. First commit: clear the outputs listed above from the working tree (`rm -rf cmd/ internal/ go.mod go.sum; git rm README.md`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
 2. Implement the walking skeleton according to the specs in `specs/core/` and the requirements in `constitution.md`. Write automated unit tests as required.
 3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`) and their corresponding unit tests.
 4. Regenerate application build configuration based on `tech-stack.md` and generate `README.md`.

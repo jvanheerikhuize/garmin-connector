@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -185,6 +186,76 @@ func TestRunStatus(t *testing.T) {
 		}
 		if rawMap["connected"] != false || rawMap["device"] != nil {
 			t.Errorf("unexpected json map: %+v", rawMap)
+		}
+	})
+}
+
+func setupMockDevice(t *testing.T) (*device.Info, string) {
+	tempDir := t.TempDir()
+	watchRoot := tempDir
+	garminDir := tempDir + "/GARMIN"
+	os.MkdirAll(garminDir, 0755)
+	os.WriteFile(garminDir+"/test.txt", []byte("123"), 0644)
+	return &device.Info{MountPath: tempDir}, watchRoot
+}
+
+func TestRunLs(t *testing.T) {
+	t.Run("RunLs without device", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		err := RunLs(buf, "", false, false, func() (*device.Info, error) { return nil, nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		if buf.String() != "No Garmin device detected.\n" {
+			t.Errorf("Unexpected output: %s", buf.String())
+		}
+	})
+
+	t.Run("RunLs with device json", func(t *testing.T) {
+		info, _ := setupMockDevice(t)
+		buf := new(bytes.Buffer)
+		err := RunLs(buf, "", true, false, func() (*device.Info, error) { return info, nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		var nodes []device.FileNode
+		if err := json.Unmarshal(buf.Bytes(), &nodes); err != nil {
+			t.Fatal(err)
+		}
+		if len(nodes) != 1 || nodes[0].Name != "GARMIN" {
+			t.Errorf("Expected 1 GARMIN node, got %+v", nodes)
+		}
+	})
+}
+
+func TestRunTree(t *testing.T) {
+	t.Run("RunTree without device json", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		err := RunTree(buf, "", 3, true, false, func() (*device.Info, error) { return nil, nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.TrimSpace(buf.String()) != "null" {
+			t.Errorf("Unexpected output: %s", buf.String())
+		}
+	})
+
+	t.Run("RunTree with device", func(t *testing.T) {
+		info, watchRoot := setupMockDevice(t)
+		buf := new(bytes.Buffer)
+		err := RunTree(buf, "", 3, false, false, func() (*device.Info, error) { return info, nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := buf.String()
+		if !strings.Contains(out, "GARMIN") {
+			t.Errorf("Expected GARMIN in tree output, got: %s", out)
+		}
+		
+		parts := strings.Split(watchRoot, "/")
+		rootName := parts[len(parts)-1]
+		if !strings.Contains(out, rootName) {
+			t.Errorf("Expected root name %s in tree output, got: %s", rootName, out)
 		}
 	})
 }

@@ -6,6 +6,7 @@ A lightweight, zero-runtime-dependency CLI tool to connect modern Garmin watches
 
 - **Automatic Device Discovery**: Scans standard Linux MTP and mount paths (`/run/user/<uid>/gvfs`, `/media`, `/mnt`) without manual configuration.
 - **Metadata Extraction**: Reads and parses `GarminDevice.xml`, extracting model description, unique unit ID, software version, and part number.
+- **File Browser**: Inspect watch directories and files directly from the CLI using `ls` and `tree`, with case-insensitive path resolution and dotfile filtering.
 - **CLI & Machine-Readable Output**: Inspect status interactively or output structured JSON (`--json`) for automated scripting.
 - **Fault-Tolerant**: Cleanly exits with code `0` when no device is connected, with graceful fallbacks on missing or unreadable metadata.
 
@@ -62,12 +63,32 @@ Example output when no device is detected:
 No Garmin device detected.
 ```
 
+### File Browser (`ls` / `tree`)
+
+You can inspect the filesystem of your connected watch without opening a graphical file manager. Paths are resolved relative to the root of the watch's internal storage (the parent of the `GARMIN` folder).
+
+List contents of a directory (defaults to root):
+```bash
+./garmin-connector ls
+./garmin-connector ls GARMIN/Activity
+```
+
+View contents as a recursive tree (defaults to depth 3):
+```bash
+./garmin-connector tree
+./garmin-connector tree GARMIN/Metrics --depth 2
+```
+
+*(Note: Files and directories starting with `.` are hidden by default to reduce GVFS metadata clutter. Use the `-a` or `--all` flag to show them.)*
+
 ### Machine-Readable JSON Output
 
 Structured JSON output for scripts and integrations:
 
 ```bash
 ./garmin-connector status --json
+./garmin-connector ls --json
+./garmin-connector tree --json
 ```
 
 Example output when connected:
@@ -99,6 +120,7 @@ This repository is governed by formal specifications located in the `spec/` dire
 - [Constitution](spec/constitution.md): Core requirements, grounding reality, facts, and assumptions.
 - [CLI Entrypoint Spec](spec/skeleton/cli-entrypoint.md): Command dispatch and output contract.
 - [Device Discovery Spec](spec/skeleton/device-discovery.md): Filesystem traversal and XML parsing rules.
+- [File Browser Spec](spec/feature/file-browser.md): Read-only filesystem inspection (`ls`, `tree`).
 - [Regeneration Protocol](spec/regeneration.md): Runbook for spec-driven regeneration and quality gates.
 
 ## License

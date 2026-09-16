@@ -66,22 +66,13 @@ Provides a way to inspect the file and directory structure of a connected Garmin
 
 ## Data Shapes / Interfaces
 
-```go
-package device
-
-type FileNode struct {
-	Name         string      `json:"name"`
-	IsDir        bool        `json:"is_dir"`
-	Size         int64       `json:"size_bytes"`
-	ModifiedTime string      `json:"modified_time"`
-	Children     []*FileNode `json:"children,omitempty"` // Populated only for 'tree'
-}
-
-// ListDir returns a flat slice of files/directories within the specified path relative to the watch root.
-func ListDir(info *Info, relPath string, showHidden bool) ([]FileNode, error)
-
-// Tree returns a hierarchical representation of the filesystem starting at the specified path.
-func Tree(info *Info, relPath string, maxDepth int, showHidden bool) (*FileNode, error)
+```yaml
+FileNode:
+  name: string          # Name of the file/directory
+  is_dir: boolean       # True if it's a directory
+  size_bytes: integer   # Size in bytes
+  modified_time: string # ISO8601 or similar modification time
+  children: array       # Optional list of FileNode objects (only for 'tree')
 ```
 
 ## Non-Goals

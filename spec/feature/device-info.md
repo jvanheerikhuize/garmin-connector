@@ -85,46 +85,36 @@ Extracts rich hardware, storage, and software inventory from a connected Garmin 
 
 ## Data Shapes / Interfaces
 
-```go
-package device
+```yaml
+StorageInfo:
+  total_bytes: integer
+  used_bytes: integer
+  free_bytes: integer
+  used_percentage: float   # 0.0 to 100.0
 
-type StorageInfo struct {
-	TotalBytes     uint64  `json:"total_bytes"`
-	UsedBytes      uint64  `json:"used_bytes"`
-	FreeBytes      uint64  `json:"free_bytes"`
-	UsedPercentage float64 `json:"used_percentage"`
-}
+AppInfo:
+  name: string
+  type: string             # watchface, watch-app, data-field, etc.
+  version: string
+  app_id: string
+  file_name: string
 
-type AppInfo struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Version  string `json:"version"`
-	AppID    string `json:"app_id"`
-	FileName string `json:"file_name"`
-}
+ConnectIQInfo:
+  vm_version: string
+  max_apps: integer
+  app_space_bytes: integer
+  apps: array              # List of AppInfo objects
 
-type ConnectIQInfo struct {
-	VMVersion     string    `json:"vm_version"`
-	MaxApps       int       `json:"max_apps"`
-	AppSpaceBytes int64     `json:"app_space_bytes"`
-	Apps          []AppInfo `json:"apps"`
-}
+ComponentVersions:
+  gps: string              # Optional
+  wireless: string         # Optional
+  sensor_hub: string       # Optional
 
-type ComponentVersions struct {
-	GPS       string `json:"gps,omitempty"`
-	Wireless  string `json:"wireless,omitempty"`
-	SensorHub string `json:"sensor_hub,omitempty"`
-}
-
-type DetailedInfo struct {
-	Info                     // Embedded base metadata (Model, ID, SoftwareVersion, PartNumber, MountPath)
-	Storage    StorageInfo   `json:"storage"`
-	ConnectIQ  ConnectIQInfo `json:"connect_iq"`
-	Components ComponentVersions `json:"components"`
-}
-
-// GetDetailedInfo gathers comprehensive device, storage, and app metrics.
-func GetDetailedInfo(dev *Info) (*DetailedInfo, error)
+DetailedInfo:
+  device: DeviceInfo       # From device-discovery schema
+  storage: StorageInfo
+  connect_iq: ConnectIQInfo
+  components: ComponentVersions
 ```
 
 ### JSON Output Contract

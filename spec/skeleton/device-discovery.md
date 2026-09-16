@@ -61,19 +61,13 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 
 ## Data Shapes / Interfaces
 
-```go
-package device
-
-type Info struct {
-	Model           string `json:"model"`
-	ID              string `json:"id"`
-	SoftwareVersion string `json:"software_version"`
-	PartNumber      string `json:"part_number"`
-	MountPath       string `json:"mount_path"`
-}
-
-// Discover returns the first Garmin device found, or nil if none are connected.
-func Discover() (*Info, error)
+```yaml
+DeviceInfo:
+  model: string            # Device model name or description
+  id: string               # Unique device ID
+  software_version: string # Main software version
+  part_number: string      # Device part number
+  mount_path: string       # Detected local mount path
 ```
 
 ## Non-Goals

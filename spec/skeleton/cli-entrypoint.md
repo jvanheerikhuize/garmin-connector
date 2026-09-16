@@ -64,7 +64,7 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 
 ## Data Shapes / Interfaces
 
-```go
+```json
 // Output of garmin-connector status --json
 {
   "connected": true,

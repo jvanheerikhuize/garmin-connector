@@ -2,7 +2,7 @@
 id: kebab-case-id                  # stable, matches filename without extension; never renamed once referenced by depends_on elsewhere
 title: Human-Readable Title
 tier: skeleton                     # skeleton = load-bearing for the walking skeleton/MVP | feature = layered on top, can be removed without breaking the skeleton
-status: draft                      # draft (proposed, not yet implemented) | implemented (matches src/) | deprecated (superseded, kept for history)
+status: draft                      # draft (proposed, not yet implemented) | implemented (matches codebase) | deprecated (superseded, kept for history)
 owners: [jerry]
 depends_on: []                     # ids of other specs this one builds on or assumes are present
 implements_requirements: []        # ids of requirements from constitution.md this spec fulfills (e.g., [FR-1, NFR-2])

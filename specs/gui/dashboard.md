@@ -50,7 +50,7 @@ Provides a standalone, local web server and responsive browser-based dashboard f
 - Graceful server shutdown on OS interrupt signals (`SIGINT`, `SIGTERM`).
 
 **Out of scope:**
-- Uploading routes/courses via web UI (deferred to subsequent spec `specs/gui/course-upload.md`).
+- Uploading routes/courses via web UI (specified in [Web GUI Course Upload](course-upload.md)).
 - Filesystem file browser / explorer UI (specified in [Web GUI Column View File Browser](file-browser.md)).
 - Multi-user authentication, passwords, or session tokens (single-user local loopback tool).
 - Remote Internet exposure or reverse-proxy TLS termination.

@@ -124,6 +124,7 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
     - Clicking the button MUST trigger a browser file download via `GET /api/fs/download?path=<file_path>`.
   - For text-based files (`.xml`, `.txt`, `.log`) with size `< 64 KB`:
     - The Preview Pane SHOULD display an inline read-only code block rendering the text content with syntax styling or monospace formatting.
+  - For course files (`.gpx`), the Preview Pane SHOULD render the interactive 2D vector route map and elevation profile per [Web GUI Course Route & Elevation Preview](course-preview.md).
 
 ### Keyboard Navigation (macOS Finder Parity)
 - When the File Browser view has focus, the interface MUST support the following keyboard controls:

@@ -6,7 +6,7 @@ last_updated: 2026-09-16
 
 # Regeneration Protocol
 
-How a single-shot (re)generation of the application from `specs/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](README.md).
+How a single-shot (re)generation of the application from `specs/` is run, what is fixed input vs. regenerated output, and the gate it must pass. This is the operational counterpart of the "rebuild test" in [README.md](../README.md).
 
 ## Who runs it
 

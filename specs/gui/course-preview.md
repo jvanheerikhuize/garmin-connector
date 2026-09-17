@@ -83,6 +83,7 @@ Enables visual and spatial previewing of Garmin course files (`.gpx`, `.fit`) di
 - **Point Resampling:**
   - If the raw track contains more than 500 trackpoints, the response points array MUST be uniformly downsampled to at most 500 points to keep payload size under 50 KB and ensure 60fps rendering in the browser.
   - Each downsampled point MUST include: `lat` (float64), `lon` (float64), `ele` (float64), and `dist` (cumulative meters from start, float64).
+  - `points_count` in the response reports the raw (pre-downsampling) trackpoint count, not `len(points)`, so the UI can show true track density independent of the payload-size cap.
 
 ### HTTP API Endpoints
 
@@ -146,7 +147,7 @@ CoursePreviewResponse:
   elevation_loss_meters: float # e.g., 615.0
   min_elevation_meters: float  # e.g., 340.0
   max_elevation_meters: float  # e.g., 960.0
-  points_count: integer        # e.g., 350
+  points_count: integer        # Total raw trackpoint count before downsampling (may exceed len(points)); e.g., 350
   bounds:
     min_lat: float            # e.g., 46.512
     max_lat: float            # e.g., 46.598

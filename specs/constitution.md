@@ -35,6 +35,7 @@ Facts are objective, verifiable truths about the external environment (hardware,
 | **FCT-16** | OS (Linux) | Linux has no single, universal in-process mechanism to open a URL in the user's default web browser; doing so requires invoking a separate desktop-integration mechanism (a launcher utility or a desktop portal service), which may be absent on minimal or headless systems. | Linux desktop integration conventions | Informs `FR-7` |
 | **FCT-17** | Physical Reality | Garmin watches (confirmed: Venu X1) ship with a `GARMIN/NewFiles` directory already present on internal storage; it does not need to be created by external tooling. | Filesystem inspection on a real Venu X1 (PR #29, 2026-09-17) | Informs `FR-6`, `FR-9` |
 | **FCT-18** | GVFS Protocol | An actively mounted GVFS MTP device may not appear in GVFS's own mount-enumeration interfaces even while its mounted file-system path remains fully readable — directly scanning known mount-point paths is a more reliable discovery signal than querying GVFS's mount list. | Empirical verification: a real Venu X1 mount was fully readable while absent from GVFS's own mount listing (PR #29, 2026-09-17) | Informs `FR-1` |
+| **FCT-19** | Filesystem / GVFS | Modifying a GVFS-mounted MTP device (creating directories, deleting files or directories, creating/copying files) may trigger `EOPNOTSUPP` via direct POSIX system calls, necessitating fallback to desktop GVFS client tooling or D-Bus APIs. | Empirical testing on Linux GVFS MTP mount points | Informs `FR-11` |
 
 ### 2.2 Assumptions
 Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
@@ -52,6 +53,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 | **ASM-9** | UX / Performance | High-frequency GPS course tracks contain tens of thousands of points that cause SVG layout thrashing; downsampling to <= 500 points preserves route geometry and elevation contours while guaranteeing responsive browser rendering. | Performance benchmarking / SVG rendering limits | Scopes `FR-10` |
 | **ASM-10** | UX / Visualization | Raw geographic coordinates in fractions of a degree distort SVG marker radii and container scaling; normalizing projected Cartesian coordinates onto a fixed viewport canvas (e.g. 300x180) with a uniform aspect-ratio scale factor guarantees crisp, bounded vector map rendering across any route scale. | Empirical UI verification on GPX courses | Scopes `FR-10` |
 | **ASM-11** | UX Principle | Users launching the web GUI are on a desktop Linux environment with a working browser-launch mechanism (`FCT-16`) and a configured default browser; automatic browser launching may silently do nothing on headless/minimal systems, but the server itself remains fully usable via the printed URL. | User environment observation | Scopes `FR-7` |
+| **ASM-12** | UX Principle | Direct watch filesystem manipulation commands (`mkdir`, `rm`, `touch`, `put`) operate immediately on device storage without an intermediate recycle bin or undo facility; user confirmation or recursive deletion requires explicit flags. | Product design / CLI standards | Scopes `FR-11` |
 
 ## 3. Requirements
 
@@ -66,6 +68,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 - **FR-8: Web GUI Column View File Browser**: Provide an interactive Column View (macOS Finder-style Miller columns) file browser within the web GUI to navigate watch directories lazily, inspect file metadata and details in a preview pane, and download files from the watch.
 - **FR-9: Web GUI Course Upload**: Provide an interactive drag-and-drop and file-picker upload interface within the web GUI to transfer route/course files (`.fit`, `.gpx`) to the watch's incoming directory (`GARMIN/NewFiles/`), backed by a local REST endpoint.
 - **FR-10: Web GUI Course Route & Elevation Preview**: Provide an offline vector route map and elevation profile preview for `.gpx` course files within the web GUI, computing distance, elevation gain/loss, and track geometry for both device courses and staged uploads. `.fit` course files remain uploadable (`FR-6`, `FR-9`) but are out of scope for visual preview — see [gui/course-preview.md](gui/course-preview.md) Non-Goals.
+- **FR-11: Watch Filesystem Manipulation**: Provide CLI commands (`mkdir`, `rm`, `touch`, `put`) to manipulate the watch's internal filesystem (creating directories, removing files/directories, creating empty files, and copying local files onto arbitrary watch paths) relative to the internal storage root with case-insensitive path resolution and fallback mechanisms for MTP mount limitations.
 
 ### 3.2 Non-Functional Requirements
 - **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state (exits `0`), never an exception. Unexpected disconnects or missing metadata must not cause unhandled crashes.
@@ -76,7 +79,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 
 ```mermaid
 flowchart LR
-    CLI["CLI (status, info, ls, tree, upload)"] --> Detector["Device Detection (MTP / OS Mounts)"]
+    CLI["CLI (status, info, ls, tree, upload, mkdir, rm, touch, put)"] --> Detector["Device Detection (MTP / OS Mounts)"]
     Web["Web GUI Server (Dashboard, Files, Upload, Course Preview)"] --> CourseParser["Course Parser & Geometry Engine"]
     Web --> Detector
     Detector --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]

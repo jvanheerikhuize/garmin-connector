@@ -44,7 +44,7 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 
 ### Subcommand Dispatch
 - MUST expose a root command (`garmin-connector`).
-- MUST register the subcommands `status`, `info` ([device-info](device-info.md)), `ls`, `tree` ([file-browser](file-browser.md)), and `upload` ([course-upload](course-upload.md)).
+- MUST register the subcommands `status`, `info` ([device-info](device-info.md)), `ls`, `tree` ([file-browser](file-browser.md)), `upload` ([course-upload](course-upload.md)), `web` ([dashboard](../gui/dashboard.md)), and `mkdir`, `rm`, `touch`, `put` ([filesystem-manipulation](filesystem-manipulation.md)).
 - MUST accept a `--version` flag on the root command that outputs `1.0.0` (followed by a newline) to stdout and exits `0`.
 - MUST print help text and exit `0` when invoked with no arguments, or with `--help`, `-h` or `help`. The help text MUST name every registered subcommand.
 - MUST exit with code `2` and print an error naming the unknown command plus the usage text to stderr (nothing to stdout) when invoked with an unrecognized subcommand.

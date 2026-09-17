@@ -6,7 +6,7 @@ status: implemented
 owners: [jerry]
 depends_on: [dashboard, course-upload, device-discovery]
 implements_requirements: [FR-9]
-relies_on_facts: [FCT-8, FCT-12, FCT-13]
+relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17]
 relies_on_assumptions: [ASM-1, ASM-3, ASM-7, ASM-8]
 last_updated: 2026-09-17
 ---
@@ -24,7 +24,7 @@ Depends on: [Web GUI Dashboard](dashboard.md), [Course Upload (upload command)](
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-9` (Web GUI Course Upload)
-- **Relies on Facts:** `FCT-8` (MTP character casing), `FCT-12` (Watch imports from `GARMIN/NewFiles/`), `FCT-13` (GVFS MTP D-Bus Push requirement)
+- **Relies on Facts:** `FCT-8` (MTP character casing), `FCT-12` (Watch imports from `GARMIN/NewFiles/`), `FCT-13` (GVFS MTP D-Bus Push requirement), `FCT-15` (D-Bus Push has no in-process equivalent), `FCT-17` (`NewFiles` pre-exists on-device)
 - **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-3` (Single device workflow), `ASM-7` (File extension validation sufficient), `ASM-8` (Local web interface preference)
 
 ## Purpose

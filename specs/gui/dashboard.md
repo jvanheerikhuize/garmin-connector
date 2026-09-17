@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery, device-info]
 implements_requirements: [FR-7]
-relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6]
-relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4, ASM-8]
-last_updated: 2026-09-16
+relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6, FCT-16]
+relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4, ASM-8, ASM-11]
+last_updated: 2026-09-17
 ---
 
 # Web GUI Dashboard
@@ -23,8 +23,8 @@ Depends on: [CLI Entrypoint](../cli/cli-entrypoint.md), [Device Discovery](../co
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-7` (Web-Based GUI Dashboard)
-- **Relies on Facts:** `FCT-2` (`GarminDevice.xml`), `FCT-4` (GVFS mount paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces)
-- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output format), `ASM-3` (Single device workflow), `ASM-4` (Graceful degradation on missing metadata), `ASM-8` (Local web interface preference)
+- **Relies on Facts:** `FCT-2` (`GarminDevice.xml`), `FCT-4` (GVFS mount paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-16` (no universal in-process browser-launch mechanism)
+- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output format), `ASM-3` (Single device workflow), `ASM-4` (Graceful degradation on missing metadata), `ASM-8` (Local web interface preference), `ASM-11` (browser-launch mechanism assumed present)
 
 ## Purpose
 

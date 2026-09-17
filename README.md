@@ -197,7 +197,7 @@ If no watch is connected, the file extension is not `.fit`/`.gpx`, or the local 
 
 ## Scope
 
-Linux only, read-only, one watch at a time. There is no GUI, no activity/course syncing and no firmware flashing. See [ROADMAP.md](ROADMAP.md) for ideas beyond that.
+Linux only, one watch at a time.
 
 ## Development
 

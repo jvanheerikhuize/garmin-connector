@@ -45,7 +45,7 @@ Provides a browser-based drag-and-drop and file-picker interface within the Web 
   - Accepts `multipart/form-data` with file payload under form key `file`.
   - Verifies device connection; returns `503 Service Unavailable` if no device is connected.
   - Validates file extension; returns `400 Bad Request` if not `.fit` or `.gpx`.
-  - Transfers the file to `GARMIN/NewFiles/` on the device using existing `device.UploadCourse` logic (including GVFS D-Bus push support per `FCT-13` and casing tolerance per `FCT-8`).
+  - Transfers the file to `GARMIN/NewFiles/` on the device using standard course transfer logic (including GVFS D-Bus push support per `FCT-13` and casing tolerance per `FCT-8`).
   - Overwrites any existing file of the same name in `GARMIN/NewFiles/`.
   - Returns `200 OK` JSON response with filename, destination path, and transfer size.
 - Post-upload user guidance:
@@ -96,7 +96,7 @@ Provides a browser-based drag-and-drop and file-picker interface within the Web 
     `{"error": "missing file payload"}`.
   - If the uploaded file extension is not `.fit` or `.gpx` (case-insensitive), MUST return `400 Bad Request` with JSON:
     `{"error": "invalid file type: must be .fit or .gpx"}`.
-  - MUST write the incoming file bytes safely and execute transfer to the watch's `GARMIN/NewFiles` directory via `device.UploadCourse`.
+  - MUST write the incoming file bytes safely and execute transfer to the watch's `GARMIN/NewFiles` directory (`FR-6`).
   - MUST tolerate directory casing variations (`FCT-8`).
   - If standard POSIX write fails due to GVFS MTP FUSE limitations, MUST fall back to GVFS D-Bus push (`FCT-13`).
   - MUST overwrite any existing file with the same filename in `NewFiles`.

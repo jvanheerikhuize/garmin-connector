@@ -145,7 +145,7 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
   - `all` (boolean, optional, default `false`): When `true`, include files/directories whose names start with `.`.
 - **Behavior:**
   - If no device is connected, MUST return `200 OK` with `{"connected": false, "path": "", "entries": []}`.
-  - Resolves `path` relative to the watch storage root using `device.ResolvePath` (FCT-8 case-insensitivity, FCT-3 root anchoring).
+  - Resolves `path` relative to the watch storage root with case-insensitivity (`FCT-8`) and storage root clamping (`FCT-3`).
   - Path traversal attempts containing `..` segments MUST NOT escape above the storage root.
   - If `path` does not exist or points to a non-directory, MUST return `404 Not Found` with JSON error envelope `{"error": "directory not found"}`.
   - Returns `200 OK` with JSON envelope adhering to `FsLsResponse` schema below. Entries MUST be sorted case-insensitively by name with ties broken by byte order.
@@ -156,7 +156,7 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
   - `path` (string, required): Watch-relative path to the target file.
 - **Behavior:**
   - If no device is connected, MUST return `503 Service Unavailable` with `{"error": "no device connected"}`.
-  - Resolves `path` using `device.ResolvePath`.
+  - Resolves `path` relative to the storage root with case-insensitivity (`FCT-8`).
   - If `path` resolves outside the watch storage root or points to a directory rather than a regular file, MUST return `400 Bad Request` with `{"error": "invalid file path"}`.
   - If the file does not exist, MUST return `404 Not Found` with `{"error": "file not found"}`.
   - Sets HTTP response headers:

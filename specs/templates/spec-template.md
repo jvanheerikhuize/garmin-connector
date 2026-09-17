@@ -37,7 +37,9 @@ One paragraph: what this exists to do and why, in plain language. Not a restatem
 
 ## Requirements
 
-Numbered or bulleted, grouped by sub-behavior. Use RFC 2119 language (MUST/MUST NOT/SHOULD/MAY) so requirements are testable, not descriptive prose. Each requirement should be precise enough that two different implementers (human or agent) would produce interoperable results.
+<!-- RULE: Specifications MUST remain strictly tech-stack agnostic. Do not reference language-specific packages, standard library functions, internal implementation symbols, or runtime mechanics. Describe functional behavior, operational rules, and external protocol interactions. -->
+
+Numbered or bulleted, grouped by sub-behavior. Use RFC 2119 language (MUST/MUST NOT/SHOULD/MAY) so requirements are testable, not descriptive prose. Each requirement should be precise enough that two different implementers (human or agent) would produce interoperable results in any suitable language.
 
 ### <Sub-behavior A>
 - MUST ...
@@ -49,7 +51,9 @@ Numbered or bulleted, grouped by sub-behavior. Use RFC 2119 language (MUST/MUST 
 
 ## Data Shapes / Interfaces
 
-Concrete schemas: function signatures, request/response JSON shapes, dataclass fields, message formats. This is what makes the spec regenerable — an implementer should not have to guess a field name or type.
+<!-- RULE: Use generic schema representations (JSON schema, YAML shapes, or CLI syntax). Do NOT use language-specific struct or type definitions (e.g., Go/Rust/C structs). -->
+
+Concrete schemas: generic message shapes, request/response JSON shapes, CLI argument structures, message formats. This is what makes the spec regenerable across any tech stack — an implementer should not have to guess a field name or type.
 
 ```
 ExampleShape:

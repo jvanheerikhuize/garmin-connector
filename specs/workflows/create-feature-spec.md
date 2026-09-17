@@ -13,7 +13,8 @@
 
 ## Step 3: Define Tech-Agnostic Behavior
 - Write the requirements in RFC 2119 language (MUST, SHOULD).
-- Define the **Data Shapes / Interfaces** using generic syntax (e.g., YAML, JSON schema, or TypeScript interfaces). **Do not use language-specific (e.g., Go/Rust) struct definitions in the spec.**
+- Define the **Data Shapes / Interfaces** using generic syntax (e.g., YAML, JSON schema, or CLI argument structures). **Do not use language-specific (e.g., Go/Rust) struct definitions in the spec.**
+- **Zero Tech-Stack Coupling**: Do not reference language-specific packages, internal module paths, function/method identifiers, or runtime library APIs. Specifications define *what* the system does and external contracts, never *how* in a specific language. Concrete technology choices live exclusively in `specs/tech-stack.md` and `specs/adrs/`.
 
 ## Step 4: Implementation
 - Review the spec for gaps or ambiguities.

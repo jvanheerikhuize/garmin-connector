@@ -10,6 +10,7 @@ This directory is the **single source of truth** for `garmin-connector`. From no
 6. **Rebuild test**: a spec is "good enough" if a clean agent, given only `specs/`, could regenerate a working equivalent of that slice. Gaps found during implementation should be patched back into the spec, not silently resolved only in code.
 7. **Drift**: `specs/` and the codebase should never silently diverge. If code is changed directly (hotfix, exploratory patch), the corresponding spec file(s) must be updated in the same change before it's considered done.
 8. **Diagrams are always Mermaid.** No ASCII art, no external image tools, no screenshots of diagrams — every diagram in `specs/` must be a fenced ` ```mermaid ` block so it renders natively wherever the spec is viewed.
+9. **Tech-stack agnosticism**: `specs/` (Constitution, Requirements, Facts, Assumptions, and Feature Specs) MUST remain strictly agnostic to the implementation language. They define *what* the system does and external environment contracts, never *how* in a specific language (e.g., Go, Rust, Python). Concrete language choices, standard libraries, and build toolchains belong exclusively in `specs/tech-stack.md` and `specs/adrs/`. Future agents and contributors must never introduce language-specific types, function names, package paths, or language imports into `specs/`.
 
 ## Namespaces
 

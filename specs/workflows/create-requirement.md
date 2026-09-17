@@ -6,6 +6,7 @@
 - Assign the next available `REQ-X` ID (e.g. `FR-X` for functional, `NFR-X` for non-functional).
 - Define the requirement using RFC 2119 language (MUST, SHOULD, MAY).
 - Ensure the requirement is completely decoupled from the tech stack (describes the *what*, not the *how*).
+- Ensure Facts, Assumptions, and Requirements contain NO language-specific types, internal package/function names, or implementation PR artifacts. All concrete technology decisions belong in `specs/tech-stack.md` and `specs/adrs/`.
 
 ## Step 2: Inheritance & Causality Check
 Ask the following questions. If the answer is yes, draft them and link their `Source / Origin` column to this new `REQ-X`.

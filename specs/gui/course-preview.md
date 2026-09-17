@@ -92,7 +92,7 @@ Enables visual and spatial previewing of `.gpx` Garmin course files directly in 
 - **Query Parameter:** `path` (string, required): Device-relative path to the course file (e.g., `GARMIN/Courses/loop.gpx` or `GARMIN/NewFiles/route.gpx`).
 - **Behavior:**
   - If no device is connected, MUST return `503 Service Unavailable` with `{"error": "no device connected"}`.
-  - Resolves path using `device.ResolvePath` (case-insensitive, storage-root clamped per `FCT-8`).
+  - Resolves path relative to storage root (case-insensitive, storage-root clamped per `FCT-8`).
   - If file does not exist, MUST return `404 Not Found`.
   - Parses the course and returns `200 OK` with `CoursePreviewResponse` JSON schema below.
 

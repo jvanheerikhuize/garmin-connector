@@ -116,8 +116,8 @@ Enables users to manage and mutate files and directories on their connected Garm
   - `path` (string, required): Watch-relative path of directory to create.
   - `parents` (boolean, optional, default `false`): If true, creates intermediate parent directories.
 - **Behavior:**
-  - If no device is connected, returns `503 Service Unavailable` with `{"error": "no device connected"}`.
-  - Invokes `device.Mkdir(dev, path, parents)`.
+    - If no device is connected, returns `503 Service Unavailable` with `{"error": "no device connected"}`.
+  - Creates directory at target path with intermediate parent creation if requested (`FR-11`).
   - On success, returns `200 OK` with JSON envelope adhering to `FsMutationResponse`.
   - On conflict or error, returns `400 Bad Request` or `409 Conflict` with `{"error": "<reason>"}`.
 
@@ -126,7 +126,7 @@ Enables users to manage and mutate files and directories on their connected Garm
   - `path` (string, required): Watch-relative path of file to create or touch.
 - **Behavior:**
   - If no device is connected, returns `503 Service Unavailable` with `{"error": "no device connected"}`.
-  - Invokes `device.Touch(dev, path)`.
+  - Creates empty file or touches timestamp at target path (`FR-11`).
   - On success, returns `200 OK` with `FsMutationResponse`.
   - On error (e.g. parent does not exist), returns `400 Bad Request` with `{"error": "<reason>"}`.
 
@@ -136,7 +136,7 @@ Enables users to manage and mutate files and directories on their connected Garm
   - `file` (file part, required): Binary stream of the file to upload.
 - **Behavior:**
   - If no device is connected, returns `503 Service Unavailable`.
-  - Reads uploaded file content and writes to destination via `device.Put` with GVFS/MTP fallback (`FCT-13`, `FCT-20`).
+  - Reads uploaded file content and writes to destination via file write operation with GVFS/MTP fallback (`FCT-13`, `FCT-20`).
   - Overwrites existing files with identical names.
   - On success, returns `200 OK` with `FsMutationResponse` including `bytes_transferred`.
   - On error, returns `400 Bad Request` or `500 Internal Server Error` with `{"error": "<reason>"}`.
@@ -148,7 +148,7 @@ Enables users to manage and mutate files and directories on their connected Garm
 - **Behavior:**
   - If no device is connected, returns `503 Service Unavailable`.
   - Prevents removal of storage root or `GARMIN` root directory (`400 Bad Request`).
-  - Invokes `device.Rm(dev, path, recursive, false)` with bottom-up deletion for MTP directories (`FCT-21`, `ASM-14`).
+  - Executes removal operation with bottom-up deletion for MTP directories (`FCT-21`, `ASM-14`).
   - On success, returns `200 OK` with `FsMutationResponse`.
   - On error (e.g. item is a directory without `recursive: true`), returns `400 Bad Request` with `{"error": "<reason>"}`.
 

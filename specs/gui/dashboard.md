@@ -36,7 +36,7 @@ Provides a standalone, local web server and responsive browser-based dashboard f
 - CLI subcommand `garmin-connector web` to launch a local HTTP server.
 - Configurable host binding (`--host`, default `127.0.0.1`) and port binding (`--port`, default `8080`).
 - Automatic browser launch upon server startup (`--no-browser` flag to suppress).
-- Embedded frontend static assets (HTML, CSS, vanilla JS) served via Go standard library `embed.FS` with zero external dependencies.
+- Embedded frontend static assets (HTML, CSS, vanilla JS) served directly from the compiled application with zero external runtime file dependencies.
 - Local JSON REST API endpoints:
   - `GET /api/status`: Returns current device connection status and basic metadata.
   - `GET /api/info`: Returns detailed hardware info, storage metrics, component versions, and Connect IQ inventory.
@@ -65,11 +65,11 @@ Provides a standalone, local web server and responsive browser-based dashboard f
   - `--no-browser`: Boolean flag (default: `false`). When omitted or false, the command SHOULD attempt to open `http://<host>:<port>/` in the default system browser via `xdg-open` upon server startup.
 - Upon successful socket binding, MUST output the active URL to stdout:
   `Web GUI running at http://<host>:<port>/ (Press Ctrl+C to stop)`
-- MUST intercept `SIGINT` (Ctrl+C) and `SIGTERM` signals and perform a graceful HTTP server shutdown (`http.Server.Shutdown`), closing the listener socket and exiting with status code `0`.
+- MUST intercept `SIGINT` (Ctrl+C) and `SIGTERM` signals and perform a graceful HTTP server shutdown, closing the listener socket and exiting with status code `0`.
 - If the configured port cannot be bound (e.g. port already in use), MUST write a descriptive error message to stderr and exit with non-zero exit code.
 
 ### Embedded Static Asset Serving
-- All web assets (HTML, CSS, JS, icons) MUST be embedded directly into the Go binary using `embed.FS` from the standard library.
+- All web assets (HTML, CSS, JS, icons) MUST be embedded directly into the compiled executable with zero external runtime file dependencies.
 - Root path `GET /` MUST serve the main dashboard HTML document with header `Content-Type: text/html; charset=utf-8`.
 - Static files served from `GET /static/*` MUST be served with appropriate MIME types (`text/css`, `application/javascript`, `image/svg+xml`).
 - Assets MUST NOT reference external CDNs, remote web fonts, or third-party hosted scripts; all styling and logic MUST execute fully offline without active internet connectivity.

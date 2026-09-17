@@ -1,103 +1,74 @@
 # garmin-connector
 
-A standalone Linux CLI tool and local Web GUI to connect modern Garmin watches to exchange files, inspect storage and diagnostics, explore internal filesystems, and upload routes over USB.
+A tool to connect a modern Garmin watch to a Linux laptop and exchange files over USB (MTP) — from the command line or a local web dashboard.
 
-## Overview
+## Features
 
-Modern Garmin watches (such as the Venu, Forerunner, and Fenix series) use the Media Transfer Protocol (MTP) rather than USB Mass Storage when connected to a computer. On Linux, MTP devices are dynamically mounted by Desktop Environments (such as GVFS under `/run/user/<uid>/gvfs`).
+- **Device discovery** — automatically finds a connected Garmin watch across `/run/user/<uid>/gvfs`, `/media`, and `/mnt`, without manual mount configuration.
+- **Status & diagnostics** — connection status, storage capacity, installed Connect IQ apps, and sub-component firmware versions.
+- **Read-only filesystem browser** — `ls` and `tree` for exploring the watch's internal storage from the CLI.
+- **Course upload** — transfer `.fit`/`.gpx` route files to the watch's `GARMIN/NewFiles/` directory.
+- **Web GUI** — an on-demand local dashboard with a Finder-style column-view file browser, drag-and-drop course upload, and an offline vector route/elevation preview.
 
-`garmin-connector` provides:
-- **Automatic Device Discovery**: Detects connected Garmin watches across Linux mount points (`/run/user/*/gvfs/*`, `/media/*/*`, `/mnt/*`) and parses `GarminDevice.xml`.
-- **Status & Diagnostics**: Reports device connection, firmware versions, hardware subsystems (GPS, BLE/ANT wireless, sensor hub), and installed Connect IQ apps.
-- **Filesystem Inspection**: Flat directory listing (`ls`) and recursive visual hierarchy (`tree`) with depth limiting, human-friendly units, and structured JSON output.
-- **Course & Workout Upload**: Transfers route and course files (`.fit`, `.gpx`) directly to the watch's incoming directory (`GARMIN/NewFiles/`), with automatic GVFS D-Bus fallback.
-- **Embedded Web GUI**: An on-demand local web server (`garmin-connector web`) serving a modern responsive dashboard, macOS Finder-style Miller columns file browser with file downloading, course route vector map and elevation profile preview, and drag-and-drop course upload. Zero external frontend dependencies or CDNs required.
+Everything runs on-demand, exits cleanly when no watch is connected, and ships as a single dependency-free binary.
 
-## Installation & Build
+## Install
 
-Requires Go 1.22+. Uses only the Go standard library with zero third-party dependencies.
+Requires Go 1.22+.
 
-```bash
-# Build standalone binary
+```sh
 go build -o garmin-connector ./cmd/garmin-connector
-
-# Install to $GOPATH/bin
+# or
 go install ./cmd/garmin-connector
 ```
 
-## CLI Usage
+## Usage
 
 ```
-garmin-connector [command] [flags]
+garmin-connector <command> [flags]
+
+Commands:
+  status   Show connection status of a Garmin watch
+  info     Show detailed device diagnostics
+  ls       List files on the watch
+  tree     Recursively list files on the watch
+  upload   Upload a course file to the watch
+  web      Launch the web GUI dashboard
 ```
 
-### Commands
+### Examples
 
-#### `status`
-Check device connection status and basic metadata:
-```bash
-garmin-connector status
-garmin-connector status --json
+```sh
+garmin-connector status                 # human-readable connection status
+garmin-connector status --json          # machine-readable status
+garmin-connector info --json            # storage, Connect IQ apps, firmware versions
+garmin-connector ls GARMIN/Activity      # list a directory
+garmin-connector tree --depth 2          # recursive listing
+garmin-connector upload route.gpx        # copy a course to GARMIN/NewFiles/
+garmin-connector web                     # launch the dashboard at http://127.0.0.1:8080/
 ```
 
-#### `info`
-Display detailed device diagnostics, filesystem storage capacity metrics, hardware subsystem firmware, and installed Connect IQ apps:
-```bash
-garmin-connector info
-garmin-connector info --json
+Every command exits `0` when no watch is connected (a disconnected watch is a valid state, not an error) and supports `--help`.
+
+## Web GUI
+
+`garmin-connector web` starts a local HTTP server (default `127.0.0.1:8080`) and opens it in your default browser. It provides:
+
+- A **Dashboard** with live connection status, storage gauge, firmware versions, and Connect IQ inventory (auto-refreshing).
+- A **File Browser** with macOS Finder-style Miller columns, keyboard navigation, and file download.
+- An **Upload Course** view with drag-and-drop, extension validation, and an offline route/elevation preview before transfer.
+
+All frontend assets are embedded in the binary; nothing is fetched from the network.
+
+## Development
+
+```sh
+go build ./...     # build
+go test ./...       # run tests
+go vet ./...        # static checks
+gofmt -l .           # formatting check (should print nothing)
 ```
 
-#### `ls`
-List files and directories on the watch (relative to the internal storage root):
-```bash
-garmin-connector ls
-garmin-connector ls GARMIN/Activity
-garmin-connector ls -a --json
-```
+## Design
 
-#### `tree`
-Display directory structure recursively as a visual tree with depth limits:
-```bash
-garmin-connector tree
-garmin-connector tree GARMIN --depth 2
-garmin-connector tree --json
-```
-
-#### `upload`
-Upload a route or workout file (`.fit` or `.gpx`) to the watch's `GARMIN/NewFiles` directory:
-```bash
-garmin-connector upload /path/to/route.gpx
-```
-
-#### `web`
-Launch the local web GUI dashboard and file browser:
-```bash
-garmin-connector web
-garmin-connector web --host 127.0.0.1 --port 8080 --no-browser
-```
-
-## Web GUI Features
-
-- **Dashboard**: Real-time connection indicator, storage capacity bar, subsystem firmware versions, and Connect IQ inventory with automatic 5-second polling.
-- **Miller Columns File Browser**: macOS Finder-style multi-column lazy directory navigation, file inspector, syntax preview for XML/logs, and one-click file download.
-- **Route & Elevation Preview**: Offline 2D vector route map projection and interactive elevation profile chart with hover scrubber for `.gpx` courses.
-- **Course Upload**: Drag-and-drop and file-picker interface to stage and upload courses directly to the watch.
-
-## Specifications
-
-The development and behavior of this project are strictly driven by specifications maintained in the [`specs/`](specs/) directory:
-- [Constitution](specs/constitution.md)
-- [Current Tech Stack](specs/tech-stack.md)
-- [Device Discovery Spec](specs/core/device-discovery.md)
-- [CLI Entrypoint & Status Spec](specs/cli/cli-entrypoint.md)
-- [Device Info Spec](specs/cli/device-info.md)
-- [File Browser Spec](specs/cli/file-browser.md)
-- [Course Upload Spec](specs/cli/course-upload.md)
-- [Web GUI Dashboard Spec](specs/gui/dashboard.md)
-- [Web GUI File Browser Spec](specs/gui/file-browser.md)
-- [Web GUI Course Upload Spec](specs/gui/course-upload.md)
-- [Web GUI Course Preview Spec](specs/gui/course-preview.md)
-
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+This repository is developed spec-first: behavior lives under [`specs/`](specs/) and the code in `cmd/`/`internal/` is a generated, derived artifact of those specs. See [`specs/README.md`](specs/README.md) for the working agreement and [`specs/constitution.md`](specs/constitution.md) for the system's purpose, grounding facts/assumptions, and requirements.

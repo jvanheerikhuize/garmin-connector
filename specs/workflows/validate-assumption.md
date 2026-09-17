@@ -14,6 +14,9 @@
 - In all spec frontmatter (`relies_on_facts`), insert `FCT-Y`.
 - In any Architecture Decision Records (`specs/adrs/`) or `specs/tech-stack.md` that relied on `ASM-X`, update the justification to reference `FCT-Y`.
 
-## Step 3: Application Code Regeneration
-- If validating this assumption resulted in uncovering edge cases or changing the data structures, ensure those updates are reflected in the Feature Specs first.
-- If the spec changed, trigger the `specs/workflows/regeneration.md` protocol to allow the autonomous agent (or developer) to rebuild the implementation from the new facts.
+## Step 3: Execute the Fact Change Cascade
+- Because validating an assumption introduces a verified fact (`FCT-Y`), trigger the [Fact Change Cascade](fact-change-cascade.md):
+  1. Re-evaluate requirements in `constitution.md` (does the confirmed fact expand or alter capabilities?).
+  2. Evaluate architecture and tech stack suitability in `specs/tech-stack.md`.
+  3. Propagate changes into Feature Specs.
+  4. Trigger `specs/workflows/regeneration.md` to rebuild the implementation from the new specs.

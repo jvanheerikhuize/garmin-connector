@@ -21,6 +21,15 @@ All specifications in `specs/` (including this Constitution, Requirements, Facts
 - **No Language Symbol Leaks**: Specifications MUST NOT reference language-specific packages, internal module paths, function signatures of a specific language implementation, or language runtime mechanics.
 - **Agent and Contributor Contract**: Any software engineer or AI agent working on this repository MUST uphold this boundary. When proposing, modifying, or creating specifications, all content must be formulated such that a clean implementer could build the system in any suitable language (e.g., Go, Rust, Python, C, Zig) without altering the specification.
 
+### 1.3 Core Axiom: The Causal Cascade Law
+
+External facts (`FCT-X`) and operational assumptions (`ASM-Y`) are the root of reality for this system.
+Whenever an external fact changes, is invalidated, or an assumption is verified into a fact:
+1. **Requirements First**: Functional Requirements (`FR-X`) and Non-Functional Requirements (`NFR-X`) MUST be re-evaluated to reflect the new boundaries of what is possible, mandatory, or prohibited.
+2. **Tech Stack Subordination**: The technology stack (`specs/tech-stack.md` and `specs/adrs/`) is strictly subordinate to the requirements and facts. If the current language, runtime, or architectural constraints cannot natively satisfy the updated requirements without breaching NFRs, an Architecture Decision Record (ADR) MUST be authored to evaluate or migrate the stack.
+3. **Spec Propagation**: All dependent specifications under `specs/` MUST be updated prior to code modification.
+4. **Derived Implementation**: Application code in `cmd/` and `internal/` is regenerated or rewritten as a derived artifact of the updated specifications following [`specs/workflows/fact-change-cascade.md`](workflows/fact-change-cascade.md) and [`specs/workflows/regeneration.md`](workflows/regeneration.md). Code changes MUST NEVER bypass or precede specification changes.
+
 ## 2. Grounding Reality
 
 ### 2.1 External Facts

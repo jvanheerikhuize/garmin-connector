@@ -38,3 +38,15 @@ These can be swapped out over time; history of these choices is tracked in the A
 | Test (the gate in [regeneration.md](workflows/regeneration.md)) | `go test ./...` |
 | Static checks | `go vet ./...` and `gofmt -l .` (must print nothing) |
 | Install for the current user | `go install ./cmd/garmin-connector` |
+
+## Ephemerality & Stack Re-Evaluation Triggers
+
+The tech stack is an ephemeral implementation detail strictly subordinate to [`constitution.md`](./constitution.md). Under the [Causal Cascade Law](README.md), any change in real-world facts (`FCT-X`) or non-functional requirements (`NFR-X`) triggers a re-evaluation of the current technologies:
+
+| Environmental / Fact Shift | Architectural Consequence | Potential Stack Migration |
+|---|---|---|
+| **Direct USB Bulk / WebUSB (`FCT-X`)** | OS GVFS mounts are unavailable or bypassed; low-level USB transfer required. | Evaluate C/Rust bindings or browser-native WebUSB stack instead of Go standard library. |
+| **Bluetooth LE / ANT+ Sync (`FCT-X`)** | Wireless sync with devices lacking USB MTP mode. | Evaluate BlueZ D-Bus integration or platform BLE runtime. |
+| **Minimal Distro Footprint (`NFR-2`)** | Tooling like `gio` is missing (`ASM-13` refuted). | Replace GIO CLI invocation with native userspace MTP implementation. |
+
+When a fact change mandates a stack migration, follow [`workflows/fact-change-cascade.md`](workflows/fact-change-cascade.md): author a superseding ADR, update this document, and execute [`workflows/regeneration.md`](workflows/regeneration.md) for a single-shot rewrite.

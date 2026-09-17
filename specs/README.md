@@ -11,6 +11,7 @@ This directory is the **single source of truth** for `garmin-connector`. From no
 7. **Drift**: `specs/` and the codebase should never silently diverge. If code is changed directly (hotfix, exploratory patch), the corresponding spec file(s) must be updated in the same change before it's considered done.
 8. **Diagrams are always Mermaid.** No ASCII art, no external image tools, no screenshots of diagrams — every diagram in `specs/` must be a fenced ` ```mermaid ` block so it renders natively wherever the spec is viewed.
 9. **Tech-stack agnosticism**: `specs/` (Constitution, Requirements, Facts, Assumptions, and Feature Specs) MUST remain strictly agnostic to the implementation language. They define *what* the system does and external environment contracts, never *how* in a specific language (e.g., Go, Rust, Python). Concrete language choices, standard libraries, and build toolchains belong exclusively in `specs/tech-stack.md` and `specs/adrs/`. Future agents and contributors must never introduce language-specific types, function names, package paths, or language imports into `specs/`.
+10. **The Causal Cascade Law**: Every shift in real-world facts (`FCT-X` added, invalidated, or verified from an `ASM-Y`) MUST trigger the [Fact Change Cascade](workflows/fact-change-cascade.md). Changes flow strictly top-down: Facts → Requirements (`FR`/`NFR`) → Architecture & Tech Stack Evaluation (`tech-stack.md`/`adrs/`) → Feature Specs → Implementation Regeneration. Code changes must NEVER precede or bypass upstream specification layers.
 
 ## Namespaces
 
@@ -27,6 +28,7 @@ specs/
 │   ├── 0001-use-go-for-core-cli.md
 │   └── ...
 ├── workflows/                     # SOPs and lifecycle runbooks
+│   ├── fact-change-cascade.md     # facts -> requirements -> tech stack -> rewrite cascade runbook
 │   ├── regeneration.md            # single-shot rewrite runbook + fresh-agent prompt
 │   ├── create-feature-spec.md
 │   └── ...

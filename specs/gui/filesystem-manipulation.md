@@ -2,7 +2,7 @@
 id: gui-filesystem-manipulation
 title: Web GUI Filesystem Manipulation
 namespace: gui
-status: draft
+status: implemented
 owners: [jerry]
 depends_on: [gui-file-browser, filesystem-manipulation]
 implements_requirements: [FR-12]

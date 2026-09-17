@@ -2,7 +2,7 @@
 id: filesystem-manipulation
 title: Filesystem Manipulation (mkdir, rm, touch, put)
 namespace: cli
-status: draft
+status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-11]

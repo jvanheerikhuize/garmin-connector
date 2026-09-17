@@ -51,7 +51,7 @@ Provides a standalone, local web server and responsive browser-based dashboard f
 
 **Out of scope:**
 - Uploading routes/courses via web UI (deferred to subsequent spec `specs/gui/course-upload.md`).
-- Filesystem file browser / explorer UI (deferred to subsequent spec `specs/gui/file-browser.md`).
+- Filesystem file browser / explorer UI (specified in [Web GUI Column View File Browser](file-browser.md)).
 - Multi-user authentication, passwords, or session tokens (single-user local loopback tool).
 - Remote Internet exposure or reverse-proxy TLS termination.
 

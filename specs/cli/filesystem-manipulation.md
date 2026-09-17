@@ -40,7 +40,7 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - `put`: copy arbitrary local files to any destination path or directory on the watch.
 - Path resolution relative to internal storage root, case-insensitive per segment (matching `ls` and `tree`), clamping `..` segments at the storage root.
 - Safeguards preventing accidental deletion or overwriting of the storage root itself (`/`, `.`, or `""`).
-- Dual-mode execution attempting direct POSIX system calls with fallback to GVFS client tooling (e.g. `gio mkdir`, `gio remove`, `gio copy`) when running over MTP FUSE mounts (`FCT-13`, `FCT-19`).
+- Dual-mode execution attempting direct POSIX system calls with fallback to GVFS client tooling (e.g. `gio mkdir`, `gio remove`, `gio copy`) with module path resolution (`FCT-20`) and bottom-up directory removal (`FCT-21`, `ASM-14`) when running over MTP FUSE mounts (`FCT-13`, `FCT-19`).
 - Structured JSON output support via `--json` flag on all mutating commands.
 
 **Out of scope:**
@@ -57,7 +57,7 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - **Target Path Resolution**: All watch paths are interpreted relative to the internal storage root (the parent directory of `GARMIN`). A leading `/` is stripped and treated as relative to the storage root. `..` segments MUST NOT climb above the storage root (they are clamped at root level).
 - **Case-Insensitive Resolution**: Path resolution MUST match existing path segments case-insensitively (`FCT-8`). When creating new items, the requested casing MUST be used for new segments.
 - **Safety Protection**: Commands MUST NOT allow deleting, removing, or overwriting the storage root itself (`/`, `.`, or empty path `""`). An attempt to do so MUST output an error to `stderr` and exit `1`.
-- **GVFS / MTP Fallback**: File and directory mutations MUST attempt direct filesystem operations first. If the underlying mount returns `EOPNOTSUPP` or an unsupported operation error (`FCT-13`, `FCT-19`), the command MUST attempt execution via GVFS client tooling (such as `gio mkdir`, `gio remove`, `gio copy`). If the operation cannot be completed, the error MUST be written to `stderr` and exit `1`.
+- **GVFS / MTP Fallback**: File and directory mutations MUST attempt direct filesystem operations first. If the underlying mount returns `EOPNOTSUPP` or an unsupported operation error (`FCT-13`, `FCT-19`), the command MUST attempt execution via GVFS client tooling (such as `gio mkdir`, `gio remove`, `gio copy`) ensuring valid host module paths (`FCT-20`) and native MTP URIs. For non-empty directories, deletion MUST proceed bottom-up (`FCT-21`, `ASM-14`). If the operation cannot be completed, the error MUST be written to `stderr` and exit `1`.
 - **Argument Validation**: Omission of required positional arguments or unrecognized flags MUST exit with code `2` (usage error) and print usage instructions to `stderr`.
 
 ### Sub-behavior A: Directory Creation (`mkdir` command)

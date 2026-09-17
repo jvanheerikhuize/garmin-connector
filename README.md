@@ -73,6 +73,88 @@ gofmt -l .           # formatting check (should print nothing)
 
 This repository is developed spec-first: behavior lives under [`specs/`](specs/) and the code in `cmd/`/`internal/` is a generated, derived artifact of those specs. See [`specs/README.md`](specs/README.md) for the working agreement and [`specs/constitution.md`](specs/constitution.md) for the system's purpose, grounding facts/assumptions, and requirements.
 
+## Assumptions Needing Verification (Help Promote Them to Facts!)
+
+In this spec-driven project, system behavior is grounded in **External Facts** (empirically verified hardware, OS, and protocol truths) and **Assumptions** (design choices or observations awaiting broader verification).
+
+We welcome testing across different **Garmin models** (Fenix, Forerunner, Edge, Instinct, Epix, Venu) and **Linux distributions** (Ubuntu, Fedora, Arch, Debian, openSUSE, minimal WMs) to verify these assumptions and promote them into permanent facts in the [Constitution](specs/constitution.md).
+
+### 1. `ASM-13`: GVFS Tooling & Backend Availability Across Linux Distributions
+- **Current Assumption:** Linux desktop systems mounting Garmin watches over MTP have GLib/GIO CLI tooling (`gio`) and the `gvfsd-mtp` D-Bus daemon installed out-of-the-box.
+- **Open Question:** Does file transfer succeed out-of-the-box on minimal window managers (i3, sway), pure KDE Plasma, or minimal Arch installations, or does it require installing packages like `gvfs-backends`?
+- **Route to Verify:**
+  ```sh
+  # Check if GIO tooling and GVFS backend module exist on your distro:
+  which gio
+  find /usr/lib* -name "libgvfsdbus.so" 2>/dev/null
+
+  # Test transferring a course to the watch:
+  garmin-connector upload /path/to/test.gpx
+  ```
+- **How to Report:** If `gio` is missing or fails, share your distro, desktop environment, and any package installation requirements.
+
+### 2. `ASM-6`: MTP Traversal Latency Across Watch Models & Storage Sizes
+- **Current Assumption:** Restricting recursive traversal depth (default `--depth 3`) keeps commands responsive under 1 second and prevents MTP hanging.
+- **Open Question:** How does traversal time scale on watches with large storage capacities (e.g. 32GB/64GB on Fenix/Forerunner models with worldwide topographic maps)? Does `--depth 3` stay fast, or does it slow down significantly?
+- **Route to Verify:**
+  ```sh
+  time garmin-connector tree --depth 3
+  time garmin-connector tree --depth 5
+  ```
+- **How to Report:** Share your watch model, firmware version, total storage size, and the `time` output.
+
+### 3. `ASM-7`: Watch Handling of Malformed Course Files
+- **Current Assumption:** Restricting uploads by file extension (`.fit`, `.gpx`) is sufficient, and deep file schema validation in the client is unnecessary because Garmin watch firmware safely handles/rejects corrupted files upon USB disconnect.
+- **Open Question:** What does your specific watch model do when an invalid or truncated GPX/FIT file is placed into `GARMIN/NewFiles/`? Does it silently delete it, log an error in `GARMIN/Debug/`, or does it cause a reboot?
+- **Route to Verify:**
+  ```sh
+  # Stage an invalid file:
+  echo "not a valid xml file" > /tmp/corrupt.gpx
+  garmin-connector upload /tmp/corrupt.gpx
+
+  # Disconnect watch from USB safely, wait for watch to return to watchface, then reconnect:
+  garmin-connector ls GARMIN/NewFiles/
+  garmin-connector ls GARMIN/Debug/ 2>/dev/null
+  ```
+- **How to Report:** Note whether the watch processed, discarded, or retained the invalid file, and whether any error log was written.
+
+### 4. `ASM-3`: Multi-Device Connection Behavior
+- **Current Assumption:** Users typically connect only one Garmin device at a time, and surfacing the first detected device mount is sufficient.
+- **Open Question:** If you connect both a Garmin watch and a Garmin bike computer (e.g. Edge), or two watches simultaneously, which device is selected, and does it cause race conditions or mount conflicts?
+- **Route to Verify:**
+  ```sh
+  # Connect two Garmin devices via USB:
+  garmin-connector status --json
+  ls -ld /run/user/$(id -u)/gvfs/mtp* /media/$USER/* 2>/dev/null
+  ```
+- **How to Report:** Share the JSON status output and whether both devices are recognized in your mount directory.
+
+### 5. `ASM-14`: Non-Empty Directory Deletion Performance Over MTP
+- **Current Assumption:** Because MTP lacks atomic directory removal (`FCT-21`), leaf-first recursive item deletion introduces latency but succeeds reliably without timeouts.
+- **Open Question:** On large directories with many nested items (e.g. 20+ files), does sequential deletion take noticeable time or encounter MTP bus timeouts on your device?
+- **Route to Verify:**
+  ```sh
+  # Create a test folder with multiple files on the watch:
+  garmin-connector mkdir test-deletion
+  garmin-connector touch test-deletion/file1.txt
+  garmin-connector touch test-deletion/file2.txt
+  time garmin-connector rm -r test-deletion
+  ```
+- **How to Report:** Share your watch model, number of deleted items, and total deletion time.
+
+---
+
+### How to Promote an Assumption to a Fact
+
+When you have tested an assumption on your setup:
+1. Follow the [Validate an Assumption Workflow](specs/workflows/validate-assumption.md).
+2. Open an Issue or Pull Request on GitHub with:
+   - **Hardware**: Watch Model, Firmware Version.
+   - **Environment**: Linux Distribution, Desktop Environment / Window Manager.
+   - **Evidence**: Command outputs, timing benchmarks, or log snippets.
+3. In a PR, move the assumption from the **Assumptions table** to the **External Facts table** (`FCT-X`) in [`specs/constitution.md`](specs/constitution.md), documenting the *Verification Method* and observations. Once reviewed, your findings become permanent constitutional facts!
+
+
 ## License
 
 This project is licensed under a **Custom Non-Commercial & Evaluation License** — see the [LICENSE](LICENSE) file for details.

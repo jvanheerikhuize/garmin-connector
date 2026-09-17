@@ -7,7 +7,7 @@ owners: [jerry]
 depends_on: [dashboard, gui-file-browser, gui-course-upload]
 implements_requirements: [FR-10]
 relies_on_facts: [FCT-8, FCT-12, FCT-14]
-relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9]
+relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9, ASM-10]
 last_updated: 2026-09-17
 ---
 
@@ -26,7 +26,7 @@ Depends on: [Web GUI Dashboard](dashboard.md), [Web GUI Column View File Browser
 
 - **Implements Requirements:** `FR-10` (Web GUI Course Route & Elevation Preview)
 - **Relies on Facts:** `FCT-8` (MTP character casing), `FCT-12` (Garmin course files in `GARMIN/NewFiles/` and `GARMIN/Courses/`), `FCT-14` (GPX XML coordinate standards `<trkpt>` / `<rtept>`)
-- **Relies on Assumptions:** `ASM-5` (Basic metadata sufficiency), `ASM-7` (File extension validation sufficient), `ASM-8` (Local web interface preference, offline execution without external CDNs), `ASM-9` (Point downsampling to <= 500 points for browser rendering performance)
+- **Relies on Assumptions:** `ASM-5` (Basic metadata sufficiency), `ASM-7` (File extension validation sufficient), `ASM-8` (Local web interface preference, offline execution without external CDNs), `ASM-9` (Point downsampling to <= 500 points for browser rendering performance), `ASM-10` (Canvas coordinate normalization for bounded vector rendering)
 
 ## Purpose
 
@@ -107,9 +107,9 @@ Enables visual and spatial previewing of Garmin course files (`.gpx`, `.fit`) di
 - **2D Route Map Projection:**
   - Latitude and longitude coordinates MUST be projected into 2D Cartesian space using an equirectangular projection centered on the route bounding box:
     $$x = (\lambda - \lambda_{\min}) \cdot \cos\left(\frac{\phi_{\min} + \phi_{\max}}{2}\right), \quad y = -(\phi - \phi_{\min})$$
-  - The rendered SVG MUST scale and center the path with `preserveAspectRatio="xMidYMid meet"`, preventing aspect ratio distortion.
+  - To prevent raw geographic degree coordinates (fractions of a degree) from distorting SVG circle marker radii and stroke rendering (ASM-10), projected coordinates MUST be normalized onto a fixed canvas coordinate space (e.g. `viewBox="0 0 300 180"`) using a uniform aspect-ratio scale factor $\text{scale} = \min(\text{availWidth} / \Delta x, \text{availHeight} / \Delta y)$, with padding and centering.
   - The route track MUST be drawn with a crisp vector stroke (accent color `#38bdf8`, stroke-width 3px, round cap and join).
-  - A green circular marker MUST indicate the start point; a checkered or red marker MUST indicate the end point.
+  - A green circular marker (5px radius) MUST indicate the start point; a red circular marker (5px radius) MUST indicate the end point.
 - **Elevation Profile Chart:**
   - MUST render beneath the route map as an SVG area graph plotting cumulative distance on the horizontal axis and elevation on the vertical axis.
   - The elevation path MUST be filled with a subtle vertical gradient (e.g. `rgba(56, 189, 248, 0.2)` to transparent).

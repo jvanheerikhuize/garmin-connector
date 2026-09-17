@@ -1,214 +1,103 @@
 # garmin-connector
 
-A small Linux command-line tool that finds a Garmin watch connected over USB (MTP) and lets you inspect it: connection status, device metadata, storage usage, installed Connect IQ apps, component firmware versions, and the watch's filesystem. Everything is read-only.
+A standalone Linux CLI tool and local Web GUI to connect modern Garmin watches to exchange files, inspect storage and diagnostics, explore internal filesystems, and upload routes over USB.
 
-```
-$ garmin-connector status
-Device found: Venu X1 (ID: 3617019779)
-  Software version: 1829
-  Part number:      006-B4603-00
-  Mount path:       /run/user/1000/gvfs/mtp:host=091e_51fb_0000d7975783
-```
+## Overview
 
-## Why
+Modern Garmin watches (such as the Venu, Forerunner, and Fenix series) use the Media Transfer Protocol (MTP) rather than USB Mass Storage when connected to a computer. On Linux, MTP devices are dynamically mounted by Desktop Environments (such as GVFS under `/run/user/<uid>/gvfs`).
 
-Modern Garmin watches (e.g. the Venu X1) only speak MTP over USB — no USB mass storage. On Linux the desktop mounts them through GVFS under `/run/user/<uid>/gvfs/mtp:host=...`, hiding the familiar `GARMIN` folder behind an `Internal Storage/` volume. `garmin-connector` does the path-hunting for you and exposes the result as plain text or JSON so scripts can consume it.
+`garmin-connector` provides:
+- **Automatic Device Discovery**: Detects connected Garmin watches across Linux mount points (`/run/user/*/gvfs/*`, `/media/*/*`, `/mnt/*`) and parses `GarminDevice.xml`.
+- **Status & Diagnostics**: Reports device connection, firmware versions, hardware subsystems (GPS, BLE/ANT wireless, sensor hub), and installed Connect IQ apps.
+- **Filesystem Inspection**: Flat directory listing (`ls`) and recursive visual hierarchy (`tree`) with depth limiting, human-friendly units, and structured JSON output.
+- **Course & Workout Upload**: Transfers route and course files (`.fit`, `.gpx`) directly to the watch's incoming directory (`GARMIN/NewFiles/`), with automatic GVFS D-Bus fallback.
+- **Embedded Web GUI**: An on-demand local web server (`garmin-connector web`) serving a modern responsive dashboard, macOS Finder-style Miller columns file browser with file downloading, course route vector map and elevation profile preview, and drag-and-drop course upload. Zero external frontend dependencies or CDNs required.
 
-## Install
+## Installation & Build
 
-Requires Go 1.22 or newer to build; the resulting binary is static and has no runtime dependencies.
+Requires Go 1.22+. Uses only the Go standard library with zero third-party dependencies.
 
-```sh
-go install github.com/jvanheerikhuize/garmin-connector/cmd/garmin-connector@latest
-# or, from a checkout:
+```bash
+# Build standalone binary
 go build -o garmin-connector ./cmd/garmin-connector
+
+# Install to $GOPATH/bin
+go install ./cmd/garmin-connector
 ```
 
-## Usage
+## CLI Usage
 
 ```
-garmin-connector <command> [flags]
-garmin-connector --help
-garmin-connector --version        # prints 1.0.0
+garmin-connector [command] [flags]
 ```
 
-Every command accepts `--json` for machine-readable output and exits `0` when no watch is connected — "not connected" is a normal state, not an error.
+### Commands
 
-| Command | What it does |
-|---|---|
-| `status` | Is a watch connected? Model, ID, software version, part number, mount path. |
-| `info` | Everything `status` shows plus storage usage, Connect IQ apps and GPS/wireless/sensor-hub firmware versions. |
-| `ls [path]` | List one directory of the watch (defaults to the storage root). |
-| `tree [path]` | Recursive listing, 3 levels deep by default. |
-| `upload <file>` | Upload a course file (`.fit` or `.gpx`) to `GARMIN/NewFiles/`. |
-
-### `status`
-
-```
-$ garmin-connector status --json
-{
-  "connected": true,
-  "device": {
-    "model": "Venu X1",
-    "id": "3617019779",
-    "software_version": "1829",
-    "part_number": "006-B4603-00",
-    "mount_path": "/run/user/1000/gvfs/mtp:host=091e_51fb_0000d7975783"
-  }
-}
+#### `status`
+Check device connection status and basic metadata:
+```bash
+garmin-connector status
+garmin-connector status --json
 ```
 
-With no watch attached: `No Garmin device detected.` or `{"connected": false, "device": null}`.
-
-### `info`
-
-```
-$ garmin-connector info
-Device found: Venu X1 (ID: 3617019779)
-  Software version: 1829
-  Part number:      006-B4603-00
-  Mount path:       /run/user/1000/gvfs/mtp:host=091e_51fb_0000d7975783
-
-Storage
-  Total: 28.9 GB
-  Used:  13.7 GB (47.3%)
-  Free:  15.2 GB
-
-Components
-  GPS:        11.02
-  Wireless:   29.27
-  Sensor hub: 1.02
-
-Connect IQ (VM 6.0.3, 5/32 apps, 64.0 MB app space)
-  NAME              TYPE                        VERSION  FILE          APP ID
-  Spotify           audio-content-provider-app  72       G8TI4826.PRG  6eb48a8f-9bd8-4fe0-99e7-28d787c8a711
-  ...
+#### `info`
+Display detailed device diagnostics, filesystem storage capacity metrics, hardware subsystem firmware, and installed Connect IQ apps:
+```bash
+garmin-connector info
+garmin-connector info --json
 ```
 
-`info --json` nests `storage`, `connect_iq` and `components` inside `device`, next to the identity fields:
-
-```json
-{
-  "connected": true,
-  "device": {
-    "model": "Venu X1",
-    "id": "3617019779",
-    "software_version": "1829",
-    "part_number": "006-B4603-00",
-    "mount_path": "/run/user/1000/gvfs/mtp:host=091e_51fb_0000d7975783",
-    "storage": {
-      "total_bytes": 31058427904,
-      "used_bytes": 14691237888,
-      "free_bytes": 16367190016,
-      "used_percentage": 47.3
-    },
-    "connect_iq": {
-      "vm_version": "6.0.3",
-      "max_apps": 32,
-      "app_space_bytes": 67108864,
-      "apps": [
-        {
-          "name": "Spotify",
-          "type": "audio-content-provider-app",
-          "version": "72",
-          "app_id": "6eb48a8f-9bd8-4fe0-99e7-28d787c8a711",
-          "file_name": "G8TI4826.PRG"
-        }
-      ]
-    },
-    "components": {
-      "gps": "11.02",
-      "wireless": "29.27",
-      "sensor_hub": "1.02"
-    }
-  }
-}
+#### `ls`
+List files and directories on the watch (relative to the internal storage root):
+```bash
+garmin-connector ls
+garmin-connector ls GARMIN/Activity
+garmin-connector ls -a --json
 ```
 
-Sections whose source is missing degrade gracefully: no Connect IQ block means `"apps": []`, an absent firmware record means an empty version string.
-
-### `ls` and `tree`
-
-Paths are relative to the watch's storage root (the folder that contains `GARMIN`) and are matched case-insensitively, so `garmin/activity` works even though the watch reports `GARMIN/Activity`. Entries starting with `.` are hidden unless you pass `-a`/`--all`.
-
-```
-$ garmin-connector ls garmin/activity
-    9.4 KB  2026-08-29 21:00  2026-08-29-20-58-40.fit
-   31.4 KB  2026-08-30 15:40  2026-08-30-15-29-09.fit
-   49.4 KB  2026-08-31 12:49  2026-08-31-12-28-08.fit
-   76.4 KB  2026-09-11 20:49  2026-09-11-20-12-40.fit
-  377.3 KB  2026-09-12 13:24  2026-09-12-10-10-03.fit
-       0 B  2023-01-01 00:00  PendingHD/
-
-$ garmin-connector tree garmin/courses --depth 2
-GARMIN/Courses
-└── Deurnsche_Peel_.fit
-
-0 directories, 1 file
+#### `tree`
+Display directory structure recursively as a visual tree with depth limits:
+```bash
+garmin-connector tree
+garmin-connector tree GARMIN --depth 2
+garmin-connector tree --json
 ```
 
-| Flag | `ls` | `tree` | Meaning |
-|---|---|---|---|
-| `-a`, `--all` | ✓ | ✓ | Show hidden entries |
-| `--json` | ✓ | ✓ | JSON output (`ls`: array of entries; `tree`: nested object) |
-| `--depth N` | | ✓ | Descend at most `N` levels (default `3`, like `tree -L`) |
-
-Each entry carries `name`, `is_dir`, `size_bytes` and `modified_time` (RFC 3339). In `tree --json`, directories that were traversed carry a `children` array (empty if the directory is empty); files and directories beyond `--depth` have no `children` key.
-
-```
-$ garmin-connector ls --json garmin/courses
-[
-  {
-    "name": "Deurnsche_Peel_.fit",
-    "is_dir": false,
-    "size_bytes": 5752,
-    "modified_time": "2026-09-13T11:06:56+02:00"
-  }
-]
+#### `upload`
+Upload a route or workout file (`.fit` or `.gpx`) to the watch's `GARMIN/NewFiles` directory:
+```bash
+garmin-connector upload /path/to/route.gpx
 ```
 
-A path that doesn't exist on the watch prints an error to stderr and exits `1`.
-
-### `upload`
-
-Uploads a `.fit` or `.gpx` course file directly into the watch's incoming `GARMIN/NewFiles/` folder. When the watch is disconnected from USB, it will automatically process the course.
-
-```sh
-$ garmin-connector upload my_course.gpx
-Course my_course.gpx uploaded successfully.
+#### `web`
+Launch the local web GUI dashboard and file browser:
+```bash
+garmin-connector web
+garmin-connector web --host 127.0.0.1 --port 8080 --no-browser
 ```
 
-If no watch is connected, the file extension is not `.fit`/`.gpx`, or the local file is unreadable, `garmin-connector upload` prints an error to stderr and exits with a non-zero code.
+## Web GUI Features
 
-### Exit codes
+- **Dashboard**: Real-time connection indicator, storage capacity bar, subsystem firmware versions, and Connect IQ inventory with automatic 5-second polling.
+- **Miller Columns File Browser**: macOS Finder-style multi-column lazy directory navigation, file inspector, syntax preview for XML/logs, and one-click file download.
+- **Route & Elevation Preview**: Offline 2D vector route map projection and interactive elevation profile chart with hover scrubber for `.gpx` courses.
+- **Course Upload**: Drag-and-drop and file-picker interface to stage and upload courses directly to the watch.
 
-| Code | Meaning |
-|---|---|
-| `0` | Success, including "no device connected" |
-| `1` | A device is connected but the request failed (e.g. unknown path for `ls`/`tree`) |
-| `2` | Usage error: unknown command, unknown flag, bad flag value |
+## Specifications
 
-## How discovery works
-
-1. Candidate mounts are globbed in order: `/run/user/*/gvfs/*`, `/media/*/*`, `/mnt/*`.
-2. A candidate qualifies if it contains a `GARMIN` directory (case-insensitive) either directly or up to two folders down (MTP typically exposes `Internal Storage/GARMIN`).
-3. The first match wins — one watch at a time is the supported setup. Unreadable paths (other users' `/run/user/<uid>`, permission errors) are skipped silently.
-4. `GARMIN/GarminDevice.xml` is parsed for the model, ID, software version and part number. If the file is missing or malformed the watch is still reported, as `Generic Garmin` with empty metadata.
-
-## Scope
-
-Linux only, one watch at a time.
-
-## Development
-
-This repository is spec-driven: the behaviour above is defined in [`specs/`](specs/README.md), and the Go sources are regenerated from it (see [`specs/workflows/regeneration.md`](specs/workflows/regeneration.md)). Change the spec first, then the code.
-
-```sh
-go test ./...                       # unit tests
-go vet ./... && gofmt -l .          # static checks
-go build ./cmd/garmin-connector     # build
-```
+The development and behavior of this project are strictly driven by specifications maintained in the [`specs/`](specs/) directory:
+- [Constitution](specs/constitution.md)
+- [Current Tech Stack](specs/tech-stack.md)
+- [Device Discovery Spec](specs/core/device-discovery.md)
+- [CLI Entrypoint & Status Spec](specs/cli/cli-entrypoint.md)
+- [Device Info Spec](specs/cli/device-info.md)
+- [File Browser Spec](specs/cli/file-browser.md)
+- [Course Upload Spec](specs/cli/course-upload.md)
+- [Web GUI Dashboard Spec](specs/gui/dashboard.md)
+- [Web GUI File Browser Spec](specs/gui/file-browser.md)
+- [Web GUI Course Upload Spec](specs/gui/course-upload.md)
+- [Web GUI Course Preview Spec](specs/gui/course-preview.md)
 
 ## License
 
-[MIT](LICENSE)
+MIT License. See [LICENSE](LICENSE) for details.

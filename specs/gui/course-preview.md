@@ -30,7 +30,7 @@ Depends on: [Web GUI Dashboard](dashboard.md), [Web GUI Column View File Browser
 
 ## Purpose
 
-Enables visual and spatial previewing of Garmin course files (`.gpx`, `.fit`) directly in the Web GUI without external map services or internet connectivity. Users can preview route geometry, track statistics (distance, elevation gain/loss, min/max elevation), and elevation profile graphs both when inspecting files on the watch (via the File Browser) and prior to uploading new routes (via Course Upload).
+Enables visual and spatial previewing of `.gpx` Garmin course files directly in the Web GUI without external map services or internet connectivity. Users can preview route geometry, track statistics (distance, elevation gain/loss, min/max elevation), and elevation profile graphs both when inspecting files on the watch (via the File Browser) and prior to uploading new routes (via Course Upload). `.fit` course files are uploadable (see [Course Upload](../cli/course-upload.md), [Web GUI Course Upload](course-upload.md)) but are not visually previewed — see Non-Goals.
 
 ## Scope
 
@@ -68,6 +68,7 @@ Enables visual and spatial previewing of Garmin course files (`.gpx`, `.fit`) di
 - External raster satellite/street map tiles requiring external API keys or active internet access (`NFR-2`, `ADR 0003`).
 - Editing, adding, or deleting waypoints on the route.
 - Turn-by-turn routing instruction generation.
+- Visual preview of `.fit` course files: `.fit` is a binary format with no parsing/geometry-extraction algorithm defined by this spec. Files with this extension are excluded from `/api/course/preview` and the frontend preview UI by extension check; they remain uploadable to the device unchanged (`FR-6`, `FR-9`).
 
 ## Requirements
 
@@ -168,6 +169,7 @@ CoursePreviewErrorResponse:
 - External raster map tiles (satellite, OpenStreetMap, Mapbox, Google Maps).
 - Heart rate, cadence, or power analysis.
 - Live GPS tracking.
+- Parsing or previewing `.fit` course files. `.fit` upload is unaffected (`FR-6`, `FR-9`); this spec covers `.gpx` preview only.
 
 ## Open Questions
 

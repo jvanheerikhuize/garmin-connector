@@ -6,8 +6,8 @@ status: implemented
 owners: [jerry]
 depends_on: [dashboard, gui-file-browser, gui-course-upload]
 implements_requirements: [FR-10]
-relies_on_facts: [FCT-8, FCT-12]
-relies_on_assumptions: [ASM-5, ASM-7, ASM-8]
+relies_on_facts: [FCT-8, FCT-12, FCT-14]
+relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9]
 last_updated: 2026-09-17
 ---
 
@@ -25,8 +25,8 @@ Depends on: [Web GUI Dashboard](dashboard.md), [Web GUI Column View File Browser
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-10` (Web GUI Course Route & Elevation Preview)
-- **Relies on Facts:** `FCT-8` (MTP character casing), `FCT-12` (Garmin course files in `GARMIN/NewFiles/` and `GARMIN/Courses/`)
-- **Relies on Assumptions:** `ASM-5` (Basic metadata sufficiency), `ASM-7` (File extension validation sufficient), `ASM-8` (Local web interface preference, offline execution without external CDNs)
+- **Relies on Facts:** `FCT-8` (MTP character casing), `FCT-12` (Garmin course files in `GARMIN/NewFiles/` and `GARMIN/Courses/`), `FCT-14` (GPX XML coordinate standards `<trkpt>` / `<rtept>`)
+- **Relies on Assumptions:** `ASM-5` (Basic metadata sufficiency), `ASM-7` (File extension validation sufficient), `ASM-8` (Local web interface preference, offline execution without external CDNs), `ASM-9` (Point downsampling to <= 500 points for browser rendering performance)
 
 ## Purpose
 

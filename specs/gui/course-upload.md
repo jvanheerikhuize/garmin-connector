@@ -56,7 +56,7 @@ Provides a browser-based drag-and-drop and file-picker interface within the Web 
   - Disables upload interactions and renders a dormant/disconnected banner matching Dashboard and File Browser disconnected states.
 
 **Out of scope:**
-- Parsing or rendering course route lines, elevation profiles, or GPS waypoint maps in the browser.
+- Editing route waypoints or calculating turn-by-turn navigation instructions.
 - Converting non-supported formats (e.g., KML, TCX, GeoJSON) to GPX or FIT.
 - Managing, renaming, or deleting courses already processed into the device's internal `Courses/` directory.
 
@@ -81,6 +81,7 @@ Provides a browser-based drag-and-drop and file-picker interface within the Web 
   - Dropping a file onto the dropzone or selecting a file via the file picker MUST immediately validate the file extension:
     - If the file extension is NOT `.fit` or `.gpx` (case-insensitive), the interface MUST NOT initiate an upload and MUST display an inline error: `Invalid file type. Please select a .fit or .gpx file.`
     - If valid, the interface MUST transition to the staged file state showing the filename and formatted size, with an "Upload to Watch" action button.
+    - For `.gpx` course files, the staged card SHOULD display the interactive 2D vector route map, elevation profile, and summary metrics per [Web GUI Course Route & Elevation Preview](course-preview.md).
 - **Upload Progress:**
   - Clicking "Upload to Watch" (or dropping a valid file) MUST display an upload progress/spinner indicator and disable buttons to prevent double submission.
 

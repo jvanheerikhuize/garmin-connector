@@ -30,6 +30,7 @@ Facts are objective, verifiable truths about the external environment (hardware,
 | **FCT-11** | MTP Protocol | MTP does not reliably expose standard POSIX metadata (symlinks, permissions, ownership). | MTP protocol limits | Informs `FR-4`, `FR-8` |
 | **FCT-12** | Physical Reality | Garmin watches process new courses by reading compatible files (e.g., `.fit`, `.gpx`) placed into the `GARMIN/NewFiles/` directory on the internal storage. | Hardware documentation / testing | Informs `FR-6`, `FR-9`, `FR-10` |
 | **FCT-13** | OS (Linux) | GVFS FUSE mounts for MTP devices do not support standard POSIX file creation (`open(O_CREAT)` returns `EOPNOTSUPP`), requiring file transfers over GVFS to use GVFS D-Bus Push operations. | Empirical verification on GVFS MTP mount | Informs `FR-6`, `FR-9` |
+| **FCT-14** | GPS Data Standard | Standard GPX course and activity files store coordinate sequences inside `<trkpt>` (within `<trk><trkseg>`) or `<rtept>` elements, with `lat` and `lon` attributes in decimal degrees and optional `<ele>` children in meters. | GPX 1.1 schema specification / file testing | Informs `FR-10` |
 
 ### 2.2 Assumptions
 Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
@@ -44,6 +45,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 | **ASM-6** | UX Principle | Deep recursive directory traversal is only useful if it returns quickly; imposing limits prevents the CLI from hanging indefinitely on MTP endpoints. | User experience | Scopes `FR-4`, `FR-8` |
 | **ASM-7** | Product Decision | The user is responsible for providing well-formed course files; restricting uploads by file extension (`.fit`, `.gpx`) is sufficient, and deep file schema validation is unnecessary. | Product decision | Scopes `FR-6`, `FR-9`, `FR-10` |
 | **ASM-8** | User Preference | Users seeking a graphical interface prefer launching an on-demand local web server bound to localhost accessible via a standard web browser, without background daemon requirements. | User request | Informs `FR-7`, `FR-8`, `FR-9`, `FR-10` |
+| **ASM-9** | UX / Performance | High-frequency GPS course tracks contain tens of thousands of points that cause SVG layout thrashing; downsampling to <= 500 points preserves route geometry and elevation contours while guaranteeing responsive browser rendering. | Performance benchmarking / SVG rendering limits | Scopes `FR-10` |
 
 ## 3. Requirements
 
@@ -69,8 +71,10 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 ```mermaid
 flowchart LR
     CLI["CLI (status, info, ls, tree, upload)"] --> Detector["Device Detection (MTP / OS Mounts)"]
-    Web["Web GUI Server (Dashboard, Files & Upload)"] --> Detector
+    Web["Web GUI Server (Dashboard, Files, Upload, Course Preview)"] --> CourseParser["Course Parser & Geometry Engine"]
+    Web --> Detector
     Detector --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
+    CourseParser --> Watch
 ```
 
 ## 5. Out of Scope

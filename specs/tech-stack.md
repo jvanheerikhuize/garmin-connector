@@ -28,7 +28,7 @@ These can be swapped out over time; history of these choices is tracked in the A
 | Minimum Go version | `1.22` (`go` directive in `go.mod`) |
 | Third-party dependencies | **None.** The CLI and Web GUI use only the Go standard library (`flag`, `net/http`, `embed`, `encoding/xml`, `encoding/json`, `syscall`), so no `go.sum` exists. Adding a dependency requires an ADR (NFR-3). |
 | Binary name | `garmin-connector`, built from `cmd/garmin-connector` |
-| Layout | `cmd/garmin-connector/main.go` (entrypoint), `internal/cli/` (commands, output), `internal/device/` (discovery, XML, storage, filesystem), `internal/web/` (HTTP server, embedded UI assets) |
+| Layout | `cmd/garmin-connector/main.go` (entrypoint), `internal/cli/` (commands, output), `internal/device/` (discovery, XML, storage, filesystem, course parser), `internal/web/` (HTTP server, embedded UI assets) |
 
 ## Standard Commands
 

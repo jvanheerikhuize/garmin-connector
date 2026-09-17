@@ -72,3 +72,11 @@ gofmt -l .           # formatting check (should print nothing)
 ## Design
 
 This repository is developed spec-first: behavior lives under [`specs/`](specs/) and the code in `cmd/`/`internal/` is a generated, derived artifact of those specs. See [`specs/README.md`](specs/README.md) for the working agreement and [`specs/constitution.md`](specs/constitution.md) for the system's purpose, grounding facts/assumptions, and requirements.
+
+## License
+
+This project is licensed under a **Custom Non-Commercial & Evaluation License** — see the [LICENSE](LICENSE) file for details.
+
+- **Free for Testing & Non-Commercial Use:** You are free to test, evaluate, study, develop, and use this tool for personal and non-commercial purposes.
+- **Commercial Use:** Any commercial use, distribution, or integration requires prior written permission from Jerry van Heerikhuize (<jvanheerikhuize@gmail.com>).
+

@@ -69,6 +69,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 - **FR-9: Web GUI Course Upload**: Provide an interactive drag-and-drop and file-picker upload interface within the web GUI to transfer route/course files (`.fit`, `.gpx`) to the watch's incoming directory (`GARMIN/NewFiles/`), backed by a local REST endpoint.
 - **FR-10: Web GUI Course Route & Elevation Preview**: Provide an offline vector route map and elevation profile preview for `.gpx` course files within the web GUI, computing distance, elevation gain/loss, and track geometry for both device courses and staged uploads. `.fit` course files remain uploadable (`FR-6`, `FR-9`) but are out of scope for visual preview — see [gui/course-preview.md](gui/course-preview.md) Non-Goals.
 - **FR-11: Watch Filesystem Manipulation**: Provide CLI commands (`mkdir`, `rm`, `touch`, `put`) to manipulate the watch's internal filesystem (creating directories, removing files/directories, creating empty files, and copying local files onto arbitrary watch paths) relative to the internal storage root with case-insensitive path resolution and fallback mechanisms for MTP mount limitations.
+- **FR-12: Web GUI Filesystem Manipulation**: Provide interactive filesystem manipulation within the Web GUI file browser (creating new directories, uploading arbitrary files to selected folders, deleting files/folders, and creating empty files) backed by local REST endpoints.
 
 ### 3.2 Non-Functional Requirements
 - **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state (exits `0`), never an exception. Unexpected disconnects or missing metadata must not cause unhandled crashes.
@@ -80,7 +81,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 ```mermaid
 flowchart LR
     CLI["CLI (status, info, ls, tree, upload, mkdir, rm, touch, put)"] --> Detector["Device Detection (MTP / OS Mounts)"]
-    Web["Web GUI Server (Dashboard, Files, Upload, Course Preview)"] --> CourseParser["Course Parser & Geometry Engine"]
+    Web["Web GUI Server (Dashboard, Files & FS Mutation, Upload, Course Preview)"] --> CourseParser["Course Parser & Geometry Engine"]
     Web --> Detector
     Detector --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
     CourseParser --> Watch

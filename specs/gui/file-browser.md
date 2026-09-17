@@ -62,7 +62,7 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
 - Handling edge states: Loading spinners per column, empty folders ("Folder is empty"), read errors, and device disconnection.
 
 **Out of scope:**
-- File write, upload, rename, or delete operations (deferred to future write/upload specs).
+- File write, upload, rename, or delete operations (covered by [Web GUI Filesystem Manipulation](filesystem-manipulation.md) and [Web GUI Course Upload](course-upload.md)).
 - Deep parsing or visualization of `.FIT` binary streams (heart rate curves, GPS maps).
 - Multi-file selection or batch archiving/downloading.
 - Searching or indexing files across the watch storage.

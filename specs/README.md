@@ -38,16 +38,20 @@ specs/
 │   ├── cli-entrypoint.md
 │   ├── course-upload.md
 │   ├── device-info.md
-│   └── file-browser.md
+│   ├── file-browser.md
+│   └── filesystem-manipulation.md
 ├── gui/                           # web gui specs namespace
 │   ├── course-preview.md
 │   ├── course-upload.md
-│   ├── dashboard.md
-│   └── file-browser.md
+│   ├── dashboard.md               # owns the HTTP server and the request-origin gate (NFR-4)
+│   ├── file-browser.md
+│   └── filesystem-manipulation.md
 └── templates/
     └── spec-template.md           # starting point for every new spec
 ```
 
 ## Status
 
-This corpus was seeded on 2026-09-14 by reverse-engineering the existing implementation (commit `4520796`), then restructured the same day into namespaced specs with a shared template. It describes the system **as it currently behaves**, not aspirationally — it is the working baseline for this workflow, not a wishlist. Treat gaps/ambiguities you find while implementing future changes as bugs in the spec to be fixed, not license to guess.
+This corpus was seeded on 2026-09-14 by reverse-engineering the then-existing implementation (its history has since been squashed into the initial-release commit `ac1b7e5`), then restructured the same day into namespaced specs with a shared template. It describes the system **as it currently behaves**, not aspirationally — it is the working baseline for this workflow, not a wishlist. Treat gaps/ambiguities you find while implementing future changes as bugs in the spec to be fixed, not license to guess.
+
+**Pending implementation (2026-09-18):** a security/consistency audit was folded into the corpus ahead of the code. The following are specified but not yet regenerated, and `main`'s generated code does not satisfy them until the next single-shot implementation runs: `NFR-4` request-origin gate ([gui/dashboard.md](gui/dashboard.md)), `FCT-23` percent-encoding of GVFS URIs, the `GARMIN`-root delete guard on the CLI, RFC 6266 encoding of the download filename, symlink containment at the storage root, the `--` end-of-flags token, and JSON body limits. One open question was left in [core/device-discovery.md](core/device-discovery.md).

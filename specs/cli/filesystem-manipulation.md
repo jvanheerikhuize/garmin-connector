@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-11]
-relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-11, FCT-13, FCT-15, FCT-19]
-relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-12]
-last_updated: 2026-09-17
+relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-11, FCT-13, FCT-15, FCT-19, FCT-20, FCT-21, FCT-23]
+relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-12, ASM-14]
+last_updated: 2026-09-18
 ---
 
 # Filesystem Manipulation (`mkdir`, `rm`, `touch`, `put`)
@@ -17,15 +17,16 @@ last_updated: 2026-09-17
 `internal/cli/rm.go`
 `internal/cli/touch.go`
 `internal/cli/put.go`
-`internal/device/fs_mutation.go`
+`internal/device/mutation.go`
+`internal/device/gio.go`
 
 Depends on: [CLI Entrypoint](cli-entrypoint.md), [Device Discovery](../core/device-discovery.md)
 
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-11` (Watch Filesystem Manipulation)
-- **Relies on Facts:** `FCT-3` (GARMIN directory structure), `FCT-4` (GVFS paths), `FCT-8` (MTP Casing), `FCT-11` (MTP Metadata limits), `FCT-13` (GVFS direct write limits), `FCT-15` (GVFS client tooling/D-Bus transfers), `FCT-19` (GVFS FUSE mutation limitations)
-- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output), `ASM-3` (Single connected watch), `ASM-12` (Immediate mutation without recycle bin)
+- **Relies on Facts:** `FCT-3` (GARMIN directory structure), `FCT-4` (GVFS paths), `FCT-8` (MTP Casing), `FCT-11` (MTP Metadata limits), `FCT-13` (GVFS direct write limits), `FCT-15` (GVFS client tooling/D-Bus transfers), `FCT-19` (GVFS FUSE mutation limitations), `FCT-20` (GIO module directory), `FCT-21` (non-atomic directory deletion), `FCT-23` (URI reserved characters)
+- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output), `ASM-3` (Single connected watch), `ASM-12` (Immediate mutation without recycle bin), `ASM-14` (deletion latency accepted)
 
 ## Purpose
 
@@ -39,7 +40,7 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - `touch`: create empty files on the watch or touch existing files.
 - `put`: copy arbitrary local files to any destination path or directory on the watch.
 - Path resolution relative to internal storage root, case-insensitive per segment (matching `ls` and `tree`), clamping `..` segments at the storage root.
-- Safeguards preventing accidental deletion or overwriting of the storage root itself (`/`, `.`, or `""`).
+- Safeguards preventing accidental deletion or overwriting of the storage root itself (`/`, `.`, or `""`) and of the top-level `GARMIN` directory — the same guard the Web GUI applies (`FR-11`).
 - Dual-mode execution attempting direct POSIX system calls with fallback to GVFS client tooling (e.g. `gio mkdir`, `gio remove`, `gio copy`) with module path resolution (`FCT-20`) and bottom-up directory removal (`FCT-21`, `ASM-14`) when running over MTP FUSE mounts (`FCT-13`, `FCT-19`).
 - Structured JSON output support via `--json` flag on all mutating commands.
 
@@ -56,9 +57,9 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - **Device Connection**: When no Garmin device is detected, mutating commands (`mkdir`, `rm`, `touch`, `put`) MUST print an error message `garmin-connector <cmd>: no Garmin device detected` to `stderr` and exit with code `1`.
 - **Target Path Resolution**: All watch paths are interpreted relative to the internal storage root (the parent directory of `GARMIN`). A leading `/` is stripped and treated as relative to the storage root. `..` segments MUST NOT climb above the storage root (they are clamped at root level).
 - **Case-Insensitive Resolution**: Path resolution MUST match existing path segments case-insensitively (`FCT-8`). When creating new items, the requested casing MUST be used for new segments.
-- **Safety Protection**: Commands MUST NOT allow deleting, removing, or overwriting the storage root itself (`/`, `.`, or empty path `""`). An attempt to do so MUST output an error to `stderr` and exit `1`.
-- **GVFS / MTP Fallback**: File and directory mutations MUST attempt direct filesystem operations first. If the underlying mount returns `EOPNOTSUPP` or an unsupported operation error (`FCT-13`, `FCT-19`), the command MUST attempt execution via GVFS client tooling (such as `gio mkdir`, `gio remove`, `gio copy`) ensuring valid host module paths (`FCT-20`) and native MTP URIs. For non-empty directories, deletion MUST proceed bottom-up (`FCT-21`, `ASM-14`). If the operation cannot be completed, the error MUST be written to `stderr` and exit `1`.
-- **Argument Validation**: Omission of required positional arguments or unrecognized flags MUST exit with code `2` (usage error) and print usage instructions to `stderr`.
+- **Safety Protection**: Commands MUST NOT allow deleting, removing, or overwriting the storage root itself (`/`, `.`, or empty path `""`), nor the top-level `GARMIN` directory (any casing, with or without a leading slash — i.e. a path that normalizes to the single segment `GARMIN`). An attempt to do so MUST output `garmin-connector <cmd>: cannot remove '<path>': cannot remove root or system directory` to `stderr` and exit `1`. This is deliberately identical to the Web GUI safeguard in [gui/filesystem-manipulation.md](../gui/filesystem-manipulation.md) so the two surfaces never diverge (`FR-11`). Deleting *inside* `GARMIN` (e.g. `rm -r GARMIN/Activity`) remains permitted.
+- **GVFS / MTP Fallback**: File and directory mutations MUST attempt direct filesystem operations first. If the underlying mount returns `EOPNOTSUPP` or an unsupported operation error (`FCT-13`, `FCT-19`), the command MUST attempt execution via GVFS client tooling (such as `gio mkdir`, `gio remove`, `gio copy`) ensuring valid host module paths (`FCT-20`). The target MUST be handed to that tooling either as the plain local GVFS mount path or as a fully percent-encoded `mtp://` URI (`FCT-23`); a watch path containing `#`, `%`, `?`, a space, or a non-ASCII character MUST resolve to exactly that item. The local-path form SHOULD be preferred because it needs no encoding. For non-empty directories, deletion MUST proceed bottom-up (`FCT-21`, `ASM-14`). If the operation cannot be completed, the error MUST be written to `stderr` and exit `1`.
+- **Argument Validation**: Omission of required positional arguments or unrecognized flags MUST exit with code `2` (usage error) and print usage instructions to `stderr`. A `--` token MUST end flag parsing so that a watch path beginning with `-` can be addressed (e.g. `rm -- -notes.txt`).
 
 ### Sub-behavior A: Directory Creation (`mkdir` command)
 

@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-6]
-relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17]
+relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17, FCT-23]
 relies_on_assumptions: [ASM-7]
-last_updated: 2026-09-17
+last_updated: 2026-09-18
 ---
 
 # Course Upload (`upload`)
@@ -21,7 +21,7 @@ Depends on: [CLI Entrypoint](cli-entrypoint.md), [Device Discovery](../core/devi
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-6`
-- **Relies on Facts:** `FCT-8`, `FCT-12`, `FCT-13`, `FCT-15` (D-Bus Push has no in-process equivalent), `FCT-17` (`NewFiles` pre-exists on-device)
+- **Relies on Facts:** `FCT-8`, `FCT-12`, `FCT-13`, `FCT-15` (D-Bus Push has no in-process equivalent), `FCT-17` (`NewFiles` pre-exists on-device), `FCT-23` (URI reserved characters)
 - **Relies on Assumptions:** `ASM-7`
 
 ## Purpose
@@ -56,6 +56,7 @@ The course upload capability allows users to transfer route and course files (su
 - MUST copy the local file into the `NewFiles` directory.
 - SHOULD preserve the original filename of the uploaded file.
 - MUST overwrite any existing file in the `NewFiles` directory that has the exact same name.
+- When the copy falls back to GVFS client tooling (`FCT-13`, `FCT-15`), the destination MUST be handed over as the plain local GVFS mount path or as a fully percent-encoded `mtp://` URI (`FCT-23`), so that a local filename containing `#`, `%`, `?` or a space (e.g. `ride #2.gpx`) arrives on the watch under exactly that name rather than being truncated or rejected.
 
 ### Feedback
 - MUST output a success message to `stdout` upon completion.

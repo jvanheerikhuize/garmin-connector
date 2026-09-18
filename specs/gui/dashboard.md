@@ -5,10 +5,10 @@ namespace: gui
 status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery, device-info]
-implements_requirements: [FR-7]
-relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6, FCT-16]
-relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4, ASM-8, ASM-11]
-last_updated: 2026-09-17
+implements_requirements: [FR-7, NFR-4]
+relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6, FCT-16, FCT-22]
+relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4, ASM-8, ASM-11, ASM-15]
+last_updated: 2026-09-18
 ---
 
 # Web GUI Dashboard
@@ -22,9 +22,9 @@ Depends on: [CLI Entrypoint](../cli/cli-entrypoint.md), [Device Discovery](../co
 
 ## Constitution Alignment
 
-- **Implements Requirements:** `FR-7` (Web-Based GUI Dashboard)
-- **Relies on Facts:** `FCT-2` (`GarminDevice.xml`), `FCT-4` (GVFS mount paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-16` (no universal in-process browser-launch mechanism)
-- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output format), `ASM-3` (Single device workflow), `ASM-4` (Graceful degradation on missing metadata), `ASM-8` (Local web interface preference), `ASM-11` (browser-launch mechanism assumed present)
+- **Implements Requirements:** `FR-7` (Web-Based GUI Dashboard), `NFR-4` (Same-Origin Enforcement — this spec owns the server, so the gate defined here applies to every `/api/*` endpoint declared in any dependent GUI spec)
+- **Relies on Facts:** `FCT-2` (`GarminDevice.xml`), `FCT-4` (GVFS mount paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-16` (no universal in-process browser-launch mechanism), `FCT-22` (cross-origin browser requests reach loopback listeners)
+- **Relies on Assumptions:** `ASM-1` (On-demand execution), `ASM-2` (Structured output format), `ASM-3` (Single device workflow), `ASM-4` (Graceful degradation on missing metadata), `ASM-8` (Local web interface preference), `ASM-11` (browser-launch mechanism assumed present), `ASM-15` (other sites in the same browser are hostile)
 
 ## Purpose
 
@@ -47,12 +47,13 @@ Provides a standalone, local web server and responsive browser-based dashboard f
   - Component firmware versions card (GPS, Wireless, Sensor Hub).
   - Connect IQ application table with VM version, slot allocation, and app space utilization.
   - Interactive refresh button and optional periodic polling toggle (e.g. every 5 seconds) to automatically detect device plug/unplug events.
+- A request-origin gate applied to every route, so that only the served page itself can reach the API (`NFR-4`).
 - Graceful server shutdown on OS interrupt signals (`SIGINT`, `SIGTERM`).
 
 **Out of scope:**
 - Uploading routes/courses via web UI (specified in [Web GUI Course Upload](course-upload.md)).
 - Filesystem file browser / explorer UI (specified in [Web GUI Column View File Browser](file-browser.md)).
-- Multi-user authentication, passwords, or session tokens (single-user local loopback tool).
+- Multi-user authentication, passwords, or session tokens (single-user local loopback tool). Note this does **not** exclude same-origin enforcement, which is a separate concern and is in scope (`NFR-4`).
 - Remote Internet exposure or reverse-proxy TLS termination.
 
 ## Requirements
@@ -67,6 +68,15 @@ Provides a standalone, local web server and responsive browser-based dashboard f
   `Web GUI running at http://<host>:<port>/ (Press Ctrl+C to stop)`
 - MUST intercept `SIGINT` (Ctrl+C) and `SIGTERM` signals and perform a graceful HTTP server shutdown, closing the listener socket and exiting with status code `0`.
 - If the configured port cannot be bound (e.g. port already in use), MUST write a descriptive error message to stderr and exit with non-zero exit code.
+- If `--host` is set to anything other than a loopback address (`127.0.0.1`, `::1`, `localhost`), MUST print a one-line warning to stderr before serving, stating that the API is reachable from the network and carries no authentication (`NFR-4`). Serving MUST still proceed; the flag is the user's explicit choice.
+
+### Request Origin Gate (`NFR-4`, `FCT-22`, `ASM-15`)
+The gate runs before routing, before device discovery, and before any request body is read, on **every** path the server exposes (`/`, `/static/*`, and every `/api/*` endpoint defined here or in [file-browser.md](file-browser.md), [course-upload.md](course-upload.md), [course-preview.md](course-preview.md), and [filesystem-manipulation.md](filesystem-manipulation.md)).
+- **Host check (all methods):** The request's `Host` header, with any port suffix, MUST equal the address the server printed at startup (`<host>:<port>`), or be one of the loopback spellings of it (`127.0.0.1`, `localhost`, `[::1]`) when the server is bound to loopback. Any other value MUST be rejected with `403 Forbidden` and JSON body `{"error": "forbidden host"}`. This closes DNS rebinding.
+- **Origin check (state-changing methods):** For any method other than `GET`, `HEAD`, or `OPTIONS`, if an `Origin` header is present it MUST equal `http://<Host>` for the accepted `Host` above. If `Origin` is absent, the `Referer` header (when present) MUST have that same origin. Mismatch MUST be rejected with `403 Forbidden` and `{"error": "forbidden origin"}`. A state-changing request with neither header MUST be accepted (non-browser clients such as `curl` send neither and are not the threat; `FCT-22` describes browsers, which always send `Origin` on cross-origin `POST`).
+- **Content-Type check (state-changing methods):** Each endpoint declares exactly one accepted media type — `application/json` for JSON-body endpoints, `multipart/form-data` for file uploads. A state-changing request whose `Content-Type` does not match (including `text/plain`, `application/x-www-form-urlencoded`, or a missing header) MUST be rejected with `415 Unsupported Media Type` and `{"error": "unsupported content type"}` before the body is parsed. The served frontend MUST therefore always set `Content-Type: application/json` explicitly on JSON requests.
+- **Cross-origin responses:** The server MUST NOT emit `Access-Control-Allow-Origin` or any other CORS-enabling header; there is no legitimate cross-origin consumer.
+- **Response hardening:** Every response SHOULD carry `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` (equivalently `Content-Security-Policy: frame-ancestors 'none'`) so the dashboard cannot be framed by another site.
 
 ### Embedded Static Asset Serving
 - All web assets (HTML, CSS, JS, icons) MUST be embedded directly into the compiled executable with zero external runtime file dependencies.

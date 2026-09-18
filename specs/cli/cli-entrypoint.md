@@ -8,7 +8,7 @@ depends_on: [device-discovery]
 implements_requirements: [FR-3, NFR-1]
 relies_on_facts: []
 relies_on_assumptions: [ASM-1, ASM-2]
-last_updated: 2026-09-16
+last_updated: 2026-09-18
 ---
 
 # CLI Entrypoint and Status Command
@@ -48,7 +48,7 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 - MUST accept a `--version` flag on the root command that outputs `1.0.0` (followed by a newline) to stdout and exits `0`.
 - MUST print help text and exit `0` when invoked with no arguments, or with `--help`, `-h` or `help`. The help text MUST name every registered subcommand.
 - MUST exit with code `2` and print an error naming the unknown command plus the usage text to stderr (nothing to stdout) when invoked with an unrecognized subcommand.
-- Every subcommand MUST accept `--help`/`-h` (prints its own usage to stderr, exit `0`) and MUST exit `2` with a message on stderr on an unknown flag or invalid flag value.
+- Every subcommand MUST accept `--help`/`-h` (prints its own usage to stderr, exit `0`) and MUST exit `2` with a message on stderr on an unknown flag or invalid flag value. Every subcommand MUST treat a bare `--` as the end of flags; everything after it is positional.
 - Flags MAY appear before or after positional arguments (e.g. `ls GARMIN --json` and `ls --json GARMIN` are equivalent).
 
 ### Status Command Execution
@@ -69,8 +69,8 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 ### Exit Codes (all subcommands)
 | Code | Meaning |
 |---|---|
-| `0` | Success — including "no device connected" (NFR-1) |
-| `1` | Runtime failure while a device is connected (e.g. a path given to `ls`/`tree` does not exist) |
+| `0` | Success — including "no device connected" for the inspection commands `status`, `info`, `ls`, `tree` (NFR-1) |
+| `1` | Runtime failure while a device is connected (e.g. a path given to `ls`/`tree` does not exist); **or** a mutating command (`upload`, `mkdir`, `rm`, `touch`, `put`) invoked with no device connected — a mutation that could not happen is a failure, not a no-op (NFR-1, [filesystem-manipulation.md](filesystem-manipulation.md), [course-upload.md](course-upload.md)) |
 | `2` | Usage error: unknown subcommand, unknown flag, invalid flag value, too many arguments |
 
 ## Data Shapes / Interfaces

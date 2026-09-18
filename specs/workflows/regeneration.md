@@ -48,12 +48,15 @@ The spec is expected to be sufficient. When it isn't:
 ## Gate (all must hold before the PR is marked ready)
 
 - Automated tests pass in full (using the test command standard for the chosen `tech-stack.md`).
-- `garmin-connector --help` cleanly displays usage and available commands (`status`, `info`, `ls`, `tree`, `upload`, `web`).
+- `garmin-connector --help` cleanly displays usage and available commands (`status`, `info`, `ls`, `tree`, `upload`, `web`, `mkdir`, `rm`, `touch`, `put`).
 - `garmin-connector status` and `garmin-connector status --json` execute without errors.
 - `garmin-connector info` and `garmin-connector info --json` execute without errors.
 - `garmin-connector ls` and `garmin-connector tree` execute without errors.
 - `garmin-connector upload --help` and `garmin-connector web --help` execute without errors.
+- `garmin-connector mkdir --help`, `rm --help`, `touch --help` and `put --help` execute without errors; each exits `1` with `no Garmin device detected` on stderr when no watch is attached.
 - `garmin-connector --version` returns `1.0.0`.
+- With `garmin-connector web --no-browser` running, the request gate in [gui/dashboard.md](../gui/dashboard.md) holds: a `POST /api/fs/delete` sent with `Origin: https://evil.example` answers `403`; the same request with no `Origin` header but `Content-Type: text/plain` answers `415`; `GET /api/status` with `Host: attacker.example` answers `403`; and the served page's own requests still succeed.
+- The automated tests for the web layer exercise each `/api/fs/*` endpoint against a temporary fake storage root, not merely the method check.
 - The constitution review below has been performed and its table is in the PR description.
 
 ## Constitution review (part of the gate)

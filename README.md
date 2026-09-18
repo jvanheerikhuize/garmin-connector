@@ -7,12 +7,15 @@ A tool to connect a modern Garmin watch to a Linux laptop and exchange files ove
 - **Device discovery** — automatically finds a connected Garmin watch across `/run/user/<uid>/gvfs`, `/media`, and `/mnt`, without manual mount configuration.
 - **Status & diagnostics** — connection status, storage capacity, installed Connect IQ apps, and sub-component firmware versions.
 - **Read-only filesystem browser** — `ls` and `tree` for exploring the watch's internal storage from the CLI.
+- **Filesystem manipulation** — `mkdir`, `rm`, `touch`, and `put` for creating, deleting, and copying files anywhere on the watch, with fallbacks for MTP mount limitations.
 - **Course upload** — transfer `.fit`/`.gpx` route files to the watch's `GARMIN/NewFiles/` directory.
 - **Web GUI** — an on-demand local dashboard with a Finder-style column-view file browser, drag-and-drop course upload, and an offline vector route/elevation preview.
 
 Everything runs on-demand, exits cleanly when no watch is connected, and ships as a single dependency-free binary.
 
 ## Install
+
+> **Note:** this repository publishes the *specification* of the tool. The implementation under `cmd/` and `internal/` is a generated artifact of [`specs/`](specs/) and is intentionally not tracked in version control (see [`specs/README.md`](specs/README.md) and [`specs/workflows/regeneration.md`](specs/workflows/regeneration.md)). To obtain runnable code, regenerate it from the specs following that workflow; the build commands below apply once the generated tree is present.
 
 Requires Go 1.22+.
 
@@ -34,6 +37,10 @@ Commands:
   tree     Recursively list files on the watch
   upload   Upload a course file to the watch
   web      Launch the web GUI dashboard
+  mkdir    Create a directory on the watch
+  rm       Remove a file or directory on the watch
+  touch    Create an empty file or update timestamp
+  put      Copy a local file to the watch
 ```
 
 ### Examples
@@ -45,10 +52,13 @@ garmin-connector info --json            # storage, Connect IQ apps, firmware ver
 garmin-connector ls GARMIN/Activity      # list a directory
 garmin-connector tree --depth 2          # recursive listing
 garmin-connector upload route.gpx        # copy a course to GARMIN/NewFiles/
+garmin-connector mkdir GARMIN/Custom     # create a directory on the watch
+garmin-connector put notes.txt GARMIN/   # copy an arbitrary file onto the watch
+garmin-connector rm -r GARMIN/Custom     # delete recursively (no undo)
 garmin-connector web                     # launch the dashboard at http://127.0.0.1:8080/
 ```
 
-Every command exits `0` when no watch is connected (a disconnected watch is a valid state, not an error) and supports `--help`.
+Inspection commands (`status`, `info`, `ls`, `tree`) exit `0` when no watch is connected — a disconnected watch is a valid state, not an error. Mutating commands (`upload`, `mkdir`, `rm`, `touch`, `put`) exit `1` in that case, so a script never mistakes a skipped mutation for success. Every command supports `--help`.
 
 ## Web GUI
 
@@ -59,6 +69,8 @@ Every command exits `0` when no watch is connected (a disconnected watch is a va
 - An **Upload Course** view with drag-and-drop, extension validation, and an offline route/elevation preview before transfer.
 
 All frontend assets are embedded in the binary; nothing is fetched from the network.
+
+The server only honours requests from the page it serves itself: a foreign `Host` or `Origin` header is refused, so other websites open in the same browser cannot reach the API. There is no login — if you pass `--host` to bind a non-loopback address, the API becomes reachable from your network without authentication, and the command warns you.
 
 ## Development
 

@@ -8,7 +8,7 @@ depends_on: []
 implements_requirements: [FR-1, FR-2]
 relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6, FCT-7, FCT-8, FCT-9, FCT-18]
 relies_on_assumptions: [ASM-3, ASM-4]
-last_updated: 2026-09-17
+last_updated: 2026-09-18
 ---
 
 # Device Discovery and Metadata Extraction
@@ -50,6 +50,7 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 - Candidates MUST be examined in the order of the pattern list above (glob results in lexical order); the first candidate containing a `GARMIN` directory wins (ASM-3).
 - MUST gracefully skip paths that suffer from permission denied errors — or any other read error — without failing the overall search (FCT-9). Discovery never fails: the result is either one device or "none".
 - The resulting `mount_path` is the candidate path (e.g. the GVFS `mtp:host=...` mount), not the `GARMIN` directory. Discovery MUST also retain the **storage root** (the parent directory of `GARMIN`, e.g. `<mount_path>/Internal Storage`) and the resolved `GARMIN` directory path for downstream specs ([file-browser](../cli/file-browser.md) lists relative to the storage root; [device-info](../cli/device-info.md) re-reads the XML; [course-upload](../cli/course-upload.md) transfers files to `GARMIN/NewFiles`). These two paths are internal and MUST NOT appear in the JSON output.
+- **Storage-root containment:** The storage root is the trust boundary for every downstream path operation (listing, download, preview, mutation). `/media/*` and `/mnt/*` candidates are ordinary filesystems that may contain symbolic links, unlike MTP (`FCT-11`). Downstream specs therefore resolve requested paths against the *real* (link-free) location and MUST refuse any path whose resolved form lies outside the storage root, treating it exactly like a non-existent path. Discovery MUST record the storage root in its resolved form so that comparison is well-defined.
 
 ### Metadata Extraction (FR-2, FCT-2, FCT-3, FCT-5, FCT-6)
 - Once a `GARMIN` directory is found, MUST read the `GarminDevice.xml` file located directly inside it (case-insensitive filename match, e.g. `garmindevice.XML`).
@@ -76,3 +77,8 @@ DeviceInfo:
 
 - macOS or Windows drive letter scanning.
 - Subscribing to OS events (e.g., `inotify` or `dbus`) for real-time mount detection (this is a one-shot CLI).
+- Verifying that a candidate is really a Garmin device beyond the presence of a `GARMIN` directory (see Open Questions).
+
+## Open Questions
+
+- **Candidate qualification is by directory name only.** Any mounted volume under `/media/*/*` or `/mnt/*` that happens to contain a `GARMIN` folder — a USB stick with a backup of the watch, say — is reported as the connected watch, and every mutation surface will then operate on it. Should a candidate additionally require a readable `GARMIN/GarminDevice.xml` to qualify? That conflicts with `ASM-4`'s "Generic Garmin" fallback for a missing/unparseable XML, so it needs a product decision: either tighten qualification (and narrow `ASM-4` to *malformed* rather than *missing* XML), or accept the current looseness and document it as a known limitation. Raised by the 2026-09-18 audit.

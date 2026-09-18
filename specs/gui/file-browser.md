@@ -5,10 +5,10 @@ namespace: gui
 status: implemented
 owners: [jerry]
 depends_on: [dashboard, device-discovery, file-browser]
-implements_requirements: [FR-8]
-relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-10, FCT-11]
-relies_on_assumptions: [ASM-1, ASM-3, ASM-5, ASM-6, ASM-8]
-last_updated: 2026-09-17
+implements_requirements: [FR-8, NFR-4]
+relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-10, FCT-11, FCT-22]
+relies_on_assumptions: [ASM-1, ASM-3, ASM-5, ASM-6, ASM-8, ASM-15]
+last_updated: 2026-09-18
 ---
 
 # Web GUI Column View File Browser
@@ -157,14 +157,17 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
 - **Behavior:**
   - If no device is connected, MUST return `503 Service Unavailable` with `{"error": "no device connected"}`.
   - Resolves `path` relative to the storage root with case-insensitivity (`FCT-8`).
-  - If `path` resolves outside the watch storage root or points to a directory rather than a regular file, MUST return `400 Bad Request` with `{"error": "invalid file path"}`.
+  - If `path` resolves outside the watch storage root — including when it only leaves the root by following a symbolic link, which ordinary `/media` and `/mnt` filesystems can contain even though MTP cannot (`FCT-11`) — or points to a directory rather than a regular file, MUST return `400 Bad Request` with `{"error": "invalid file path"}`. The check MUST be made on the fully resolved (link-free) path.
   - If the file does not exist, MUST return `404 Not Found` with `{"error": "file not found"}`.
   - Sets HTTP response headers:
     - `Content-Type: application/octet-stream` (or matched MIME type for `.xml`, `.txt`).
-    - `Content-Disposition: attachment; filename="<basename>"`.
+    - `Content-Disposition: attachment; filename="<basename>"`, where `<basename>` is encoded per RFC 6266 (any `"` or `\` escaped and, for non-ASCII names, a `filename*=UTF-8''<percent-encoded>` parameter added) so that a watch filename can never break or inject into the header.
     - `Content-Length: <size_bytes>`.
     - `Cache-Control: no-cache`.
   - Streams the file byte contents directly to the HTTP response writer.
+
+### Request Gate
+- Every `/api/fs/*` request first passes the **Request Origin Gate** defined in [dashboard.md](dashboard.md) (`NFR-4`, `FCT-22`, `ASM-15`); a foreign `Host` answers `403` before any device access.
 
 ### Error Handling & Performance
 - In accordance with `FCT-10`, directory fetching operations MUST NOT block other web server operations.

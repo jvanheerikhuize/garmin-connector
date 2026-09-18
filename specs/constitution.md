@@ -1,7 +1,7 @@
 ---
 id: constitution
 title: Constitution
-last_updated: 2026-09-17
+last_updated: 2026-09-18
 ---
 
 # Constitution
@@ -58,6 +58,8 @@ Facts are objective, verifiable truths about the external environment (hardware,
 | **FCT-19** | Filesystem / GVFS | Modifying a GVFS-mounted MTP device (creating directories, deleting files or directories, copying files) may trigger unsupported operation errors via direct POSIX filesystem calls, necessitating fallback to desktop GVFS client tooling or D-Bus APIs. | Empirical testing on Linux GVFS MTP mount points | Informs `FR-11`, `FR-12` |
 | **FCT-20** | OS (Linux) / Desktop Environments | Sandboxed applications, package runtimes (e.g. snap/flatpak), or containerized environments often export invalid or non-existent `GIO_MODULE_DIR` environment variables to child processes. When `GIO_MODULE_DIR` points to an empty or non-existent directory, GLib fails to dynamically load `libgvfsdbus.so` and loses GVFS MTP backend capabilities, returning unsupported operation errors on commands like `gio copy`. Detecting valid host module directories (e.g. `/usr/lib/*-linux-gnu/gio/modules` containing `libgvfsdbus.so`) and overriding `GIO_MODULE_DIR` restores full GVFS client functionality. | Empirical verification on Linux desktop environments | Informs `FR-6`, `FR-9`, `FR-11`, `FR-12` |
 | **FCT-21** | MTP Protocol / GVFS | MTP and the GVFS MTP backend do not support atomic or non-empty directory deletion (`gio remove` rejects non-empty directories with `Directory not empty`). Deleting a directory on an MTP device requires bottom-up recursive traversal and deletion of all descendant files and subdirectories before the target directory can be deleted. | Empirical verification on physical Garmin hardware over GVFS MTP mount | Informs `FR-11`, `FR-12` |
+| **FCT-22** | Web Platform (Browser Security Model) | Any web page open in the user's browser may issue cross-origin requests to loopback addresses (`127.0.0.1`, `localhost`) without a preflight when the request is a "simple" one: any `GET`, or a `POST` whose body is form-encoded, multipart, or `text/plain`. The browser attaches an `Origin` header naming the foreign page but does not block the request, and a server that does not inspect `Origin`, `Host`, or the declared `Content-Type` will act on it exactly as if the request came from its own page. DNS rebinding additionally lets a remote hostname resolve to the loopback address, so a foreign `Host` header can reach a loopback listener. Binding to loopback alone therefore does not isolate an unauthenticated local HTTP API from other web content. | Empirical: cross-origin `POST` with `Origin: https://evil.example` and `Content-Type: text/plain` carrying a JSON body, and a `GET` with a foreign `Host`, were both accepted by a running instance (2026-09-18) | Informs `FR-7`, `FR-9`, `FR-12`, `NFR-4` |
+| **FCT-23** | URI Standard (RFC 3986) / GVFS | In a URI, `#` begins the fragment, `%` begins a percent-escape, and `?` begins the query; spaces and non-ASCII characters are not permitted unencoded in the path. When a watch path is handed to GVFS client tooling as a native `mtp://<host>/<path>` URI, every path segment MUST be percent-encoded or the tooling addresses the wrong object (`ride #2.gpx` is truncated at `#`; `100%.gpx` is an invalid escape). The same tooling also accepts the plain local GVFS mount path (`/run/user/<uid>/gvfs/mtp:host=.../...`), which needs no encoding. | RFC 3986 §2.2/§3.5; probe of the URI conversion on a filename containing `#`, `%` and a space (2026-09-18) | Informs `FR-6`, `FR-9`, `FR-11`, `FR-12` |
 
 ### 2.2 Assumptions
 Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
@@ -78,6 +80,7 @@ Assumptions are beliefs about user behavior, workflows, or integration needs tha
 | **ASM-12** | UX Principle | Direct watch filesystem manipulation commands (`mkdir`, `rm`, `touch`, `put`) operate immediately on device storage without an intermediate recycle bin or undo facility; user confirmation or recursive deletion requires explicit flags. | Product design / CLI standards | Scopes `FR-11`, `FR-12` |
 | **ASM-13** | Platform Requirement | Linux desktop systems interacting with Garmin watches mounted via GVFS MTP have standard GLib/GIO client tooling (`gio`) and the GVFS D-Bus daemon (`gvfsd-mtp`) installed as part of the base desktop installation. | Desktop Linux distribution baseline analysis | Informs `FR-6`, `FR-9`, `FR-11`, `FR-12` |
 | **ASM-14** | UX / Performance | Users requesting recursive directory deletion (`rm -r` in CLI or folder delete in GUI) accept the round-trip latency of bottom-up sequential item deletion (`FCT-21`) over MTP as a necessary consequence of the MTP protocol's lack of atomic subtree removal. | Product design & protocol constraint analysis | Scopes `FR-11`, `FR-12` |
+| **ASM-15** | Threat Model | While the local web GUI is open, the same browser profile is also used to visit arbitrary, untrusted websites. Those sites must be treated as hostile: the only party permitted to mutate or upload to the watch through the local HTTP API is the GUI's own served page. No authentication is required because the tool is single-user and loopback-bound (`ASM-8`), but same-origin enforcement is. | Threat-model review of a loopback HTTP server with state-changing endpoints (`FCT-22`) | Informs `NFR-4`; scopes `FR-7`, `FR-9`, `FR-12` |
 
 ### 2.3 Grounding Reality Map: Relations Between Facts, Assumptions, and Requirements
 
@@ -96,6 +99,8 @@ flowchart LR
         FCT_GPX["FCT-14: GPX 1.1 Trackpoint Schema"]
         FCT_Browser["FCT-16: OS Browser Launching"]
         FCT_Delete["FCT-21: Non-Atomic MTP Directory Deletion"]
+        FCT_Origin["FCT-22: Browser Cross-Origin Requests Reach Loopback"]
+        FCT_URI["FCT-23: URI Reserved Characters"]
     end
 
     subgraph Assumptions["Operational Assumptions (User, UX & Design Scope)"]
@@ -106,6 +111,7 @@ flowchart LR
         ASM_Browser["ASM-8,11: Localhost Server & Browser Launch"]
         ASM_SVG["ASM-9,10: Downsample <= 500 Pts & Canvas Scaling"]
         ASM_Mutation["ASM-12,13,14: Direct Mutation & Deletion Latency"]
+        ASM_Threat["ASM-15: Untrusted Sites Share the Browser"]
     end
 
     subgraph Requirements["Functional Requirements (System Capabilities)"]
@@ -117,6 +123,7 @@ flowchart LR
         FR_Dashboard["FR-7: Web GUI Dashboard"]
         FR_Preview["FR-10: Route & Elevation Preview"]
         FR_Mutation["FR-11, FR-12: Filesystem Mutation (CLI & GUI)"]
+        NFR_Origin["NFR-4: Same-Origin Enforcement"]
     end
 
     %% Relations from Facts to Assumptions
@@ -125,6 +132,7 @@ flowchart LR
     FCT_Browser -->|"justifies desktop launcher"| ASM_Browser
     FCT_GVFS -->|"justifies tooling fallback"| ASM_Mutation
     FCT_Delete -->|"justifies leaf-first latency"| ASM_Mutation
+    FCT_Origin -->|"justifies hostile-origin stance"| ASM_Threat
 
     %% Relations from Facts to Requirements
     FCT_Discovery -->|"informs mount scan"| FR_Discovery
@@ -137,6 +145,9 @@ flowchart LR
     FCT_GVFS -->|"informs D-Bus transfer"| FR_Mutation
     FCT_Delete -->|"informs bottom-up removal"| FR_Mutation
     FCT_GPX -->|"informs GPX parser"| FR_Preview
+    FCT_Origin -->|"informs request gating"| NFR_Origin
+    FCT_URI -->|"informs path encoding"| FR_Upload
+    FCT_URI -->|"informs path encoding"| FR_Mutation
 
     %% Relations from Assumptions to Requirements
     ASM_Output -->|"shapes output format"| FR_Status
@@ -148,6 +159,9 @@ flowchart LR
     ASM_Browser -->|"scopes server & URL launch"| FR_Dashboard
     ASM_SVG -->|"bounds vector rendering"| FR_Preview
     ASM_Mutation -->|"governs mutation safeguards"| FR_Mutation
+    ASM_Threat -->|"mandates origin checks"| NFR_Origin
+    NFR_Origin -->|"gates every API call"| FR_Dashboard
+    NFR_Origin -->|"gates every API call"| FR_Mutation
 ```
 
 ## 3. Requirements
@@ -163,13 +177,14 @@ flowchart LR
 - **FR-8: Web GUI Column View File Browser**: Provide an interactive Column View (macOS Finder-style Miller columns) file browser within the web GUI to navigate watch directories lazily, inspect file metadata and details in a preview pane, and download files from the watch.
 - **FR-9: Web GUI Course Upload**: Provide an interactive drag-and-drop and file-picker upload interface within the web GUI to transfer route/course files (`.fit`, `.gpx`) to the watch's incoming directory (`GARMIN/NewFiles/`), backed by a local REST endpoint.
 - **FR-10: Web GUI Course Route & Elevation Preview**: Provide an offline vector route map and elevation profile preview for `.gpx` course files within the web GUI, computing distance, elevation gain/loss, and track geometry for both device courses and staged uploads. `.fit` course files remain uploadable (`FR-6`, `FR-9`) but are out of scope for visual preview — see [gui/course-preview.md](gui/course-preview.md) Non-Goals.
-- **FR-11: Watch Filesystem Manipulation**: Provide CLI commands (`mkdir`, `rm`, `touch`, `put`) to manipulate the watch's internal filesystem (creating directories, removing files/directories, creating empty files, and copying local files onto arbitrary watch paths) relative to the internal storage root with case-insensitive path resolution and fallback mechanisms for MTP mount limitations.
+- **FR-11: Watch Filesystem Manipulation**: Provide CLI commands (`mkdir`, `rm`, `touch`, `put`) to manipulate the watch's internal filesystem (creating directories, removing files/directories, creating empty files, and copying local files onto arbitrary watch paths) relative to the internal storage root with case-insensitive path resolution and fallback mechanisms for MTP mount limitations. Neither the storage root nor the top-level `GARMIN` directory may be removed or overwritten by any surface (CLI or GUI); the safeguard is identical on both.
 - **FR-12: Web GUI Filesystem Manipulation**: Provide interactive filesystem manipulation within the Web GUI file browser (creating new directories, uploading arbitrary files to selected folders, deleting files/folders, and creating empty files) backed by local REST endpoints.
 
 ### 3.2 Non-Functional Requirements
-- **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state (exits `0`), never an exception. Unexpected disconnects or missing metadata must not cause unhandled crashes.
+- **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state for every *inspection* surface (`status`, `info`, `ls`, `tree`, the web dashboard) — it exits `0` / answers `200`, never raises an exception. A *mutation* (`upload`, `mkdir`, `rm`, `touch`, `put`, or their GUI equivalents) requested while no watch is connected is a request that could not be honoured and MUST be reported as a failure (exit `1` / `503`), so that scripts do not mistake a no-op for success. Unexpected disconnects or missing metadata must not cause unhandled crashes in either case.
 - **NFR-2: Standalone Execution**: Low CPU and memory overhead. The tool must be executable by the end-user without requiring them to pre-install language runtimes, package managers, or third-party libraries.
 - **NFR-3: Exclusive Dependencies**: All dependencies must be strictly exclusive to this repository and its chosen implementation.
+- **NFR-4: Same-Origin Enforcement**: The local web server MUST act only on requests that originate from the page it serves itself (`ASM-15`, `FCT-22`). At minimum it MUST (a) reject any request whose `Host` header does not name the address it is bound to, (b) reject any state-changing request (anything other than `GET`/`HEAD`/`OPTIONS`) that carries an `Origin` or `Referer` naming a different origin, and (c) reject any state-changing request whose declared `Content-Type` is not the one the endpoint defines, so that a browser-issued "simple" cross-origin request can never reach a mutation. Rejections MUST be reported with `403 Forbidden` and MUST happen before device discovery or any body parsing. Binding to a non-loopback address (`--host`) does not relax this rule and MUST print a warning that the API is reachable from the network without authentication.
 
 ## 4. Architecture
 

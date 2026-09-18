@@ -5,10 +5,10 @@ namespace: gui
 status: implemented
 owners: [jerry]
 depends_on: [dashboard, gui-file-browser, gui-course-upload]
-implements_requirements: [FR-10]
-relies_on_facts: [FCT-8, FCT-12, FCT-14]
-relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9, ASM-10]
-last_updated: 2026-09-17
+implements_requirements: [FR-10, NFR-4]
+relies_on_facts: [FCT-8, FCT-12, FCT-14, FCT-22]
+relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9, ASM-10, ASM-15]
+last_updated: 2026-09-18
 ---
 
 # Web GUI Course Route & Elevation Preview
@@ -99,6 +99,7 @@ Enables visual and spatial previewing of `.gpx` Garmin course files directly in 
 #### `POST /api/course/preview`
 - **Request:** `multipart/form-data` with part name `file`.
 - **Behavior:**
+  - Passes the **Request Origin Gate** defined in [dashboard.md](dashboard.md) first (`NFR-4`, `FCT-22`, `ASM-15`): foreign `Host`/`Origin` → `403`; `Content-Type` other than `multipart/form-data` → `415`.
   - Accepts uploaded `.gpx` (or course) file up to 32 MB.
   - Validates file extension; returns `400 Bad Request` if unsupported.
   - Parses course trackpoints and returns `200 OK` with `CoursePreviewResponse` JSON schema.

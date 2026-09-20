@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-6]
-relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17, FCT-23]
+relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17, FCT-23, FCT-24]
 relies_on_assumptions: [ASM-7]
-last_updated: 2026-09-18
+last_updated: 2026-09-20
 ---
 
 # Course Upload (`upload`)
@@ -21,7 +21,7 @@ Depends on: [CLI Entrypoint](cli-entrypoint.md), [Device Discovery](../core/devi
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-6`
-- **Relies on Facts:** `FCT-8`, `FCT-12`, `FCT-13`, `FCT-15` (D-Bus Push has no in-process equivalent), `FCT-17` (`NewFiles` pre-exists on-device), `FCT-23` (URI reserved characters)
+- **Relies on Facts:** `FCT-8`, `FCT-12`, `FCT-13`, `FCT-15` (D-Bus Push has no in-process equivalent), `FCT-17` (`NewFiles` pre-exists on-device), `FCT-23` (URI reserved characters), `FCT-24` (Watch names courses from GPX metadata and converts `<wpt>` to Saved Locations)
 - **Relies on Assumptions:** `ASM-7`
 
 ## Purpose

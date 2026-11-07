@@ -4,7 +4,7 @@ Connect a modern Garmin watch to a Linux laptop and exchange files with it over 
 
 ## Features
 
-- **Device discovery.** Finds a connected watch under `/run/user/<uid>/gvfs`, `/media` and `/mnt` without any mount configuration. It looks for a `GARMIN` folder up to two levels deep, so `Internal Storage/GARMIN` is found too.
+- **Device discovery.** Finds a connected watch under GVFS MTP mounts (`/run/user/<uid>/gvfs/mtp:*`), `/media` and `/mnt` without any mount configuration. It looks for a `GARMIN` folder up to two levels deep, so `Internal Storage/GARMIN` is found too.
 - **Status and diagnostics.** Model, unit ID, software version, part number, storage capacity, sub-component firmware (GPS, wireless, sensor hub) and installed Connect IQ apps, all read from `GARMIN/GarminDevice.xml`.
 - **Read-only browsing.** `ls` and `tree`, with case-insensitive paths and depth-limited traversal so slow MTP mounts stay responsive.
 - **Filesystem manipulation.** `mkdir`, `rm`, `touch` and `put` work anywhere on the watch. When the MTP mount rejects a direct write, they fall back to the GVFS client tool (`gio`).

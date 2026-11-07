@@ -29,7 +29,7 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 ## Scope
 
 **In scope:**
-- Scanning standard Linux mount points (`/run/user/<uid>/gvfs`, `/media`, `/mnt`).
+- Scanning standard Linux mount points (GVFS MTP mounts `/run/user/<uid>/gvfs/mtp:*`, `/media`, `/mnt`).
 - Path and directory resolution for the `GARMIN` folder.
 - Parsing `GarminDevice.xml`.
 
@@ -42,9 +42,10 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 
 ### Filesystem Discovery (FR-1, FCT-4, FCT-7)
 - MUST scan candidate paths:
-  1. `/run/user/*/gvfs/*`
+  1. `/run/user/*/gvfs/mtp:*`
   2. `/media/*/*`
   3. `/mnt/*`
+- Only GVFS mounts of the MTP backend (`mtp:` prefix, FCT-4) are candidates. Other GVFS backends under the same directory (e.g. `google-drive:…`, `smb-share:…`, `sftp:…`) MUST NOT be listed or traversed, even if they contain a `GARMIN` directory (FR-1): they are not the watch, and walking a remote backend can take seconds.
 - A candidate path qualifies if it contains a `GARMIN` directory (case-insensitive). Only directories qualify; a plain file named `GARMIN` MUST be ignored.
 - MUST search up to 2 directory levels deep within the candidate path, as MTP often hides `GARMIN` behind logical volume folders like `Internal Storage/` (FCT-3). Precisely: `GARMIN` MAY be a direct child of the candidate (`<candidate>/GARMIN`) or nested beneath at most two intermediate directories (`<candidate>/a/GARMIN`, `<candidate>/a/b/GARMIN`); deeper matches MUST NOT be considered.
 - Candidates MUST be examined in the order of the pattern list above (glob results in lexical order); the first candidate containing a `GARMIN` directory wins (ASM-3).

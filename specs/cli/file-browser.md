@@ -8,7 +8,7 @@ depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-4]
 relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-10, FCT-11]
 relies_on_assumptions: [ASM-3, ASM-5, ASM-6]
-last_updated: 2026-09-16
+last_updated: 2026-11-07
 ---
 
 # File Browser (ls / tree)
@@ -50,7 +50,7 @@ Provides a way to inspect the file and directory structure of a connected Garmin
 - When no device is connected both commands MUST behave exactly like `status` (see [cli-entrypoint](cli-entrypoint.md)): print `No Garmin device detected.` (text) or `{"connected": false, "device": null}` (`--json`) to stdout and exit `0` (NFR-1).
 - `[path]` is interpreted relative to the storage root (the parent of the `GARMIN` folder). A leading `/` is also relative to the storage root, and `..` segments MUST NOT climb above it (they are clamped at the root, so `../../GARMIN` resolves to `GARMIN`).
 - Path resolution MUST be case-insensitive per segment (`garmin/activity` resolves to `GARMIN/Activity`), as MTP implementations often abstract or alter character casing (FCT-8). An exact-case match wins over a folded one when both exist.
-- If `[path]` cannot be resolved or read, the command MUST print `garmin-connector <cmd>: cannot access <path>: <reason>` to stderr and exit `1` (nothing on stdout).
+- If `[path]` cannot be resolved or read, the command MUST print `garmin-connector <cmd>: cannot access <path>: <reason>` to stderr and exit `1` (nothing on stdout). `<path>` is the argument as the user typed it; `<reason>` is `No such file or directory` for a missing path (or one that leaves the storage root through a symbolic link), `Not a directory` for a file, or the operating system's error text for a read failure.
 - More than one positional argument is a usage error (exit `2`).
 - Entries MUST be sorted by name, case-insensitively (ties broken by byte order), directories and files interleaved — as `tree` does.
 - Hidden entries are those whose name starts with `.`; they are hidden by default and shown with `-a`/`--all`.
@@ -69,7 +69,7 @@ Provides a way to inspect the file and directory structure of a connected Garmin
 - MUST provide a `tree [path]` command to recursively list directories and files.
 - If `[path]` is omitted, it MUST default to the root of the watch's internal storage.
 - SHOULD limit recursion depth by default (e.g., 3 levels) to prevent excessive MTP traversal delays, with a flag (e.g., `--depth`) to override. Concretely: default `--depth 3`; `--depth N` shows entries up to `N` levels below the starting directory (same semantics as `tree -L N`); `N < 1` is a usage error (exit `2`).
-- MUST format the standard output visually similarly to the traditional Linux `tree` command: first line is the starting path as resolved (`/` for the storage root, otherwise the canonical relative path such as `GARMIN/Activity`), branches drawn with `├── `, `└── `, `│   ` connectors, then a blank line and a summary `N directories, M files` (counting only what was printed).
+- MUST format the standard output visually similarly to the traditional Linux `tree` command: first line is the starting path as resolved (`/` for the storage root, otherwise the canonical relative path such as `GARMIN/Activity`), branches drawn with `├── `, `└── `, `│   ` connectors, then a blank line and a summary `N directories, M files` (counting only what was printed; the starting directory itself is not counted, and the words are always the plural forms, e.g. `1 directories, 1 files`).
 - Directories that cannot be read during traversal are printed but their contents are skipped (no failure).
 - MUST hide files and directories starting with `.` by default.
 - MUST support an `-a` or `--all` flag to show hidden files.

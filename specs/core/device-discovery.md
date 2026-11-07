@@ -8,7 +8,7 @@ depends_on: []
 implements_requirements: [FR-1, FR-2]
 relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6, FCT-7, FCT-8, FCT-9, FCT-18]
 relies_on_assumptions: [ASM-3, ASM-4]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # Device Discovery and Metadata Extraction
@@ -48,13 +48,14 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 - A candidate path qualifies if it contains a `GARMIN` directory (case-insensitive). Only directories qualify; a plain file named `GARMIN` MUST be ignored.
 - MUST search up to 2 directory levels deep within the candidate path, as MTP often hides `GARMIN` behind logical volume folders like `Internal Storage/` (FCT-3). Precisely: `GARMIN` MAY be a direct child of the candidate (`<candidate>/GARMIN`) or nested beneath at most two intermediate directories (`<candidate>/a/GARMIN`, `<candidate>/a/b/GARMIN`); deeper matches MUST NOT be considered.
 - Candidates MUST be examined in the order of the pattern list above (glob results in lexical order); the first candidate containing a `GARMIN` directory wins (ASM-3).
+- Within one candidate the search is breadth-first: the candidate's own children are examined before any grandchild, and grandchildren before great-grandchildren; entries at each level are examined in lexical (byte) order. The first `GARMIN` directory reached this way wins. An entry qualifies as a directory (both for `GARMIN` itself and for intermediate levels) if it resolves to one, i.e. a symbolic link to a directory counts.
 - MUST gracefully skip paths that suffer from permission denied errors — or any other read error — without failing the overall search (FCT-9). Discovery never fails: the result is either one device or "none".
 - The resulting `mount_path` is the candidate path (e.g. the GVFS `mtp:host=...` mount), not the `GARMIN` directory. Discovery MUST also retain the **storage root** (the parent directory of `GARMIN`, e.g. `<mount_path>/Internal Storage`) and the resolved `GARMIN` directory path for downstream specs ([file-browser](../cli/file-browser.md) lists relative to the storage root; [device-info](../cli/device-info.md) re-reads the XML; [course-upload](../cli/course-upload.md) transfers files to `GARMIN/NewFiles`). These two paths are internal and MUST NOT appear in the JSON output.
-- **Storage-root containment:** The storage root is the trust boundary for every downstream path operation (listing, download, preview, mutation). `/media/*` and `/mnt/*` candidates are ordinary filesystems that may contain symbolic links, unlike MTP (`FCT-11`). Downstream specs therefore resolve requested paths against the *real* (link-free) location and MUST refuse any path whose resolved form lies outside the storage root, treating it exactly like a non-existent path. Discovery MUST record the storage root in its resolved form so that comparison is well-defined.
+- **Storage-root containment:** The storage root is the trust boundary for every downstream path operation (listing, download, preview, mutation). `/media/*` and `/mnt/*` candidates are ordinary filesystems that may contain symbolic links, unlike MTP (`FCT-11`). Downstream specs therefore resolve requested paths against the *real* (link-free) location and MUST refuse any path whose resolved form lies outside the storage root, treating it exactly like a non-existent path unless the downstream spec names a specific answer for that case (e.g. [gui/file-browser.md](../gui/file-browser.md) download answers `400 invalid file path`). Discovery MUST record the storage root in its resolved form so that comparison is well-defined. Read operations (listing, download, preview) resolve the full path including its final segment; mutations resolve every segment except the last, so that a symbolic link itself can be removed or replaced without acting on its target, while a link anywhere earlier in the path that leaves the root is refused.
 
 ### Metadata Extraction (FR-2, FCT-2, FCT-3, FCT-5, FCT-6)
 - Once a `GARMIN` directory is found, MUST read the `GarminDevice.xml` file located directly inside it (case-insensitive filename match, e.g. `garmindevice.XML`).
-- MUST strip or ignore XML namespaces during unmarshaling (`encoding/xml` handles this when tags don't specify namespaces).
+- MUST strip or ignore XML namespaces during parsing, matching elements by local name only (`FCT-6`). The name of the document's root element is not checked.
 - MUST extract the following fields from the XML:
   - `Model/Description` -> `model`
   - `Id` -> `id`

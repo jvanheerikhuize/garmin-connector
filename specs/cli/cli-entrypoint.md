@@ -8,7 +8,7 @@ depends_on: [device-discovery]
 implements_requirements: [FR-3, NFR-1]
 relies_on_facts: []
 relies_on_assumptions: [ASM-1, ASM-2]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # CLI Entrypoint and Status Command
@@ -50,6 +50,8 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 - MUST exit with code `2` and print an error naming the unknown command plus the usage text to stderr (nothing to stdout) when invoked with an unrecognized subcommand.
 - Every subcommand MUST accept `--help`/`-h` (prints its own usage to stderr, exit `0`) and MUST exit `2` with a message on stderr on an unknown flag or invalid flag value. Every subcommand MUST treat a bare `--` as the end of flags; everything after it is positional.
 - Flags MAY appear before or after positional arguments (e.g. `ls GARMIN --json` and `ls --json GARMIN` are equivalent).
+- Flag syntax: long flags accept `--name value` and `--name=value`; boolean long flags accept an optional `=true`/`=false`. Single-letter boolean flags MAY be grouped (`rm -rf` ≡ `rm -r -f`). A lone `-` is a positional argument.
+- An unrecognized *root-level* flag (e.g. `garmin-connector --bogus`) is treated like an unknown subcommand: error naming the flag plus usage on stderr, exit `2`.
 
 ### Status Command Execution
 - MUST accept a `--json` boolean flag on the `status` command.

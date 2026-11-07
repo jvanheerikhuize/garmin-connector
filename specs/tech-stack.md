@@ -1,7 +1,7 @@
 ---
 id: tech-stack
 title: Current Tech Stack
-last_updated: 2026-09-16
+last_updated: 2026-11-07
 ---
 
 # Current Tech Stack
@@ -26,9 +26,9 @@ These can be swapped out over time; history of these choices is tracked in the A
 |---|---|
 | Module path | `github.com/jvanheerikhuize/garmin-connector` |
 | Minimum Go version | `1.22` (`go` directive in `go.mod`) |
-| Third-party dependencies | **None.** The CLI and Web GUI use only the Go standard library (`flag`, `net/http`, `embed`, `encoding/xml`, `encoding/json`, `syscall`), so no `go.sum` exists. Adding a dependency requires an ADR (NFR-3). |
+| Third-party dependencies | **None.** The CLI and Web GUI use only the Go standard library (notably `net/http`, `mime/multipart`, `embed`, `encoding/xml`, `encoding/json`, `os/exec` for the GVFS client tool and browser launcher, `os/signal`, `syscall`), so no `go.sum` exists. Flag parsing is a small in-repo parser in `internal/cli/root.go` rather than the standard `flag` package, because the CLI contract requires flags after positionals, grouped short flags and `--` handling. Adding a dependency requires an ADR (NFR-3). |
 | Binary name | `garmin-connector`, built from `cmd/garmin-connector` |
-| Layout | `cmd/garmin-connector/main.go` (entrypoint), `internal/cli/` (commands, output), `internal/device/` (discovery, XML, storage, filesystem, course parser), `internal/web/` (HTTP server, embedded UI assets) |
+| Layout | `cmd/garmin-connector/main.go` (entrypoint, wires `web` into the CLI), `internal/cli/` (one file per command plus `root.go` dispatch/flags, `format.go` output helpers, `web.go` for the `web` subcommand's flags), `internal/device/` (discovery, XML, storage, apps, filesystem resolution, mutations and GVFS fallback, upload, course parser), `internal/web/` (`server.go` server and request gate, `api.go` endpoints, `static/` embedded `index.html`, `app.css`, `app.js`, `icon.svg`) |
 
 ## Standard Commands
 

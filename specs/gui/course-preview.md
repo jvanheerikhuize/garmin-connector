@@ -8,7 +8,7 @@ depends_on: [dashboard, gui-file-browser, gui-course-upload]
 implements_requirements: [FR-10, NFR-4]
 relies_on_facts: [FCT-8, FCT-12, FCT-14, FCT-22]
 relies_on_assumptions: [ASM-5, ASM-7, ASM-8, ASM-9, ASM-10, ASM-15]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # Web GUI Course Route & Elevation Preview
@@ -75,16 +75,18 @@ Enables visual and spatial previewing of `.gpx` Garmin course files directly in 
 ### Backend Course Parsing & Route Metrics
 - The backend MUST parse `.gpx` files containing track points (`<trkpt>` elements with `lat` and `lon` attributes, and optional `<ele>` children).
 - If track points are absent from `<trkpt>`, the backend SHOULD attempt parsing route points (`<rtept>`).
-- If no valid GPS coordinates are found, the endpoint MUST return `422 Unprocessable Entity` with `{"error": "no GPS trackpoints found in course file"}`.
+- If no valid GPS coordinates are found, the endpoint MUST return `422 Unprocessable Entity` with `{"error": "no GPS trackpoints found in course file"}`. A document that is not well-formed XML is treated the same way. A point is valid when both `lat` (within ±90) and `lon` (within ±180) parse as decimal numbers; invalid points are skipped. Points from every `<trk>`/`<trkseg>` are concatenated in document order.
+- **Missing elevation:** a point without a parseable `<ele>` takes the most recent known elevation (or, before the first reading, the first known one; `0` if the file has none) in the `points` payload. It does not contribute to gain, loss, min or max, and the gain/loss comparison continues from the last point that had an elevation. Min/max are `0` when no point has an elevation.
 - **Metrics Calculation:**
   - MUST calculate total distance in meters by accumulating great-circle distances between successive valid track points using the Haversine formula:
     $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)}\right)$$
-  - MUST calculate elevation gain and loss in meters by summing elevation differences between consecutive points with a minimum delta threshold (e.g. 1.0 meter) to filter sensor noise.
+  - MUST calculate elevation gain and loss in meters by summing elevation differences between consecutive points with a minimum delta threshold (e.g. 1.0 meter) to filter sensor noise. The threshold is `1.0` m and applies to each consecutive pair independently: a pair whose absolute difference is below it contributes nothing (no hysteresis/accumulation).
   - MUST determine minimum and maximum elevation values along the track.
 - **Point Resampling:**
   - If the raw track contains more than 500 trackpoints, the response points array MUST be uniformly downsampled to at most 500 points to keep payload size under 50 KB and ensure 60fps rendering in the browser.
   - Each downsampled point MUST include: `lat` (float64), `lon` (float64), `ele` (float64), and `dist` (cumulative meters from start, float64).
   - `points_count` in the response reports the raw (pre-downsampling) trackpoint count, not `len(points)`, so the UI can show true track density independent of the payload-size cap.
+  - Uniform downsampling selects exactly 500 points at raw indices `round(i·(n−1)/499)` for `i = 0…499`, so the first and last raw points are always kept. `dist` is accumulated over all raw points before selection, and `bounds` are computed over all raw points.
 
 ### HTTP API Endpoints
 
@@ -93,15 +95,17 @@ Enables visual and spatial previewing of `.gpx` Garmin course files directly in 
 - **Behavior:**
   - If no device is connected, MUST return `503 Service Unavailable` with `{"error": "no device connected"}`.
   - Resolves path relative to storage root (case-insensitive, storage-root clamped per `FCT-8`).
-  - If file does not exist, MUST return `404 Not Found`.
+  - If file does not exist, MUST return `404 Not Found` (`{"error": "file not found"}`; a path that leaves the storage root through a symbolic link is treated as non-existent).
+  - If `path` names a directory, MUST return `400 {"error": "invalid file path"}`; a file whose extension is not `.gpx` MUST return `400 {"error": "unsupported course file type: only .gpx can be previewed"}`.
   - Parses the course and returns `200 OK` with `CoursePreviewResponse` JSON schema below.
 
 #### `POST /api/course/preview`
 - **Request:** `multipart/form-data` with part name `file`.
 - **Behavior:**
   - Passes the **Request Origin Gate** defined in [dashboard.md](dashboard.md) first (`NFR-4`, `FCT-22`, `ASM-15`): foreign `Host`/`Origin` → `403`; `Content-Type` other than `multipart/form-data` → `415`.
-  - Accepts uploaded `.gpx` (or course) file up to 32 MB.
-  - Validates file extension; returns `400 Bad Request` if unsupported.
+  - Accepts uploaded `.gpx` (or course) file up to 32 MB (the shared 32 MiB multipart cap; larger bodies answer `413 {"error": "request body too large"}`; a missing `file` part answers `400 {"error": "missing file payload"}`).
+  - Validates file extension; returns `400 Bad Request` if unsupported (same message as the `GET` form).
+  - Requires no connected device (it never touches the watch).
   - Parses course trackpoints and returns `200 OK` with `CoursePreviewResponse` JSON schema.
   - Does NOT write the file to the watch.
 

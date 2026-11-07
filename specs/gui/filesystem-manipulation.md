@@ -8,7 +8,7 @@ depends_on: [gui-file-browser, filesystem-manipulation]
 implements_requirements: [FR-12, NFR-4]
 relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-10, FCT-11, FCT-13, FCT-15, FCT-19, FCT-20, FCT-21, FCT-22, FCT-23]
 relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-5, ASM-8, ASM-12, ASM-14, ASM-15]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # Web GUI Filesystem Manipulation
@@ -115,6 +115,8 @@ Shared rules for all four endpoints below:
 - Every request first passes the **Request Origin Gate** defined in [dashboard.md](dashboard.md) (`NFR-4`): foreign `Host` → `403`, foreign `Origin`/`Referer` → `403`, wrong `Content-Type` → `415`. These checks happen before the `503 Service Unavailable` device check and before the body is read, so a hostile page can never trigger device discovery, let alone a mutation (`FCT-22`, `ASM-15`).
 - JSON-body endpoints (`mkdir`, `touch`, `delete`) MUST require `Content-Type: application/json` and MUST refuse to read more than 64 KiB of body, answering `413 Content Too Large` with `{"error": "request body too large"}` beyond that. Multipart endpoints keep the 32 MiB cap defined in [course-upload.md](course-upload.md).
 - The frontend MUST send `Content-Type: application/json` on every JSON request and MUST NOT rely on the server inferring it.
+- After the device check, a JSON body that is not valid JSON (or has a field of the wrong type) answers `400 {"error": "invalid JSON body"}`, and an absent `path` field answers `400 {"error": "missing path"}`. An explicit `"path": ""` is the storage root. Unknown fields are ignored.
+- `<reason>` in error bodies is the same reason text the CLI prints ([filesystem-manipulation.md](../cli/filesystem-manipulation.md)): `No such file or directory`, `File exists`, `Is a directory`, `cannot remove root or system directory`, or the tool/OS error text. A failure of the device operation itself (I/O or GVFS tooling error) answers `500`; every other failure answers with the status listed for that endpoint below.
 - When a mutation falls back to GVFS client tooling (`FCT-13`, `FCT-19`), the target MUST be handed over either as the plain local GVFS mount path or as a fully percent-encoded `mtp://` URI (`FCT-23`); a watch path containing `#`, `%`, `?`, a space, or a non-ASCII character MUST round-trip to exactly that name on the device. Implementations SHOULD prefer the local path form because it needs no encoding.
 
 #### `POST /api/fs/mkdir`
@@ -125,7 +127,7 @@ Shared rules for all four endpoints below:
   - If no device is connected, returns `503 Service Unavailable` with `{"error": "no device connected"}`.
   - Creates directory at target path with intermediate parent creation if requested (`FR-11`).
   - On success, returns `200 OK` with JSON envelope adhering to `FsMutationResponse`.
-  - On conflict or error, returns `400 Bad Request` or `409 Conflict` with `{"error": "<reason>"}`.
+  - On conflict or error, returns `400 Bad Request` or `409 Conflict` with `{"error": "<reason>"}`: an existing target (without `parents`, or an existing non-directory) is `409 File exists`; a missing parent without `parents` is `400 No such file or directory`.
 
 #### `POST /api/fs/touch`
 - **Request Body (JSON):**
@@ -145,7 +147,8 @@ Shared rules for all four endpoints below:
   - Reads uploaded file content and writes to destination via file write operation with GVFS/MTP fallback (`FCT-13`, `FCT-20`).
   - Overwrites existing files with identical names.
   - On success, returns `200 OK` with `FsMutationResponse` including `bytes_transferred`.
-  - The uploaded part's filename is used only for its final path segment; `.`, `..`, an empty name, or a name containing a path separator MUST be rejected with `400 Bad Request` and `{"error": "invalid file name"}`.
+  - The uploaded part's filename is used only for its final path segment; `.`, `..`, an empty name, or a name containing a path separator MUST be rejected with `400 Bad Request` and `{"error": "invalid file name"}`. The check applies to the filename exactly as sent by the client (`/` and `\` both count as separators); it MUST NOT be applied after silently stripping directory components.
+  - If `dir` does not resolve to an existing directory, returns `400 {"error": "directory not found"}`. An empty file part is accepted (it creates an empty file).
   - On error, returns `400 Bad Request` or `500 Internal Server Error` with `{"error": "<reason>"}`.
 
 #### `POST /api/fs/delete`
@@ -157,7 +160,8 @@ Shared rules for all four endpoints below:
   - Prevents removal of storage root or `GARMIN` root directory (`400 Bad Request`) — the same safeguard the CLI applies (`FR-11`, [filesystem-manipulation.md](../cli/filesystem-manipulation.md)); the two surfaces MUST NOT diverge.
   - Executes removal operation with bottom-up deletion for MTP directories (`FCT-21`, `ASM-14`).
   - On success, returns `200 OK` with `FsMutationResponse`.
-  - On error (e.g. item is a directory without `recursive: true`), returns `400 Bad Request` with `{"error": "<reason>"}`.
+  - On error (e.g. item is a directory without `recursive: true`), returns `400 Bad Request` with `{"error": "<reason>"}`. A non-existent target is also `400` (`No such file or directory`); there is no `force` option on this endpoint.
+  - The protected-path refusal body is `{"error": "cannot remove root or system directory"}`.
 
 ## Data Shapes / Interfaces
 

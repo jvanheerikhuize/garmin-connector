@@ -8,7 +8,7 @@ depends_on: [dashboard, device-discovery, file-browser]
 implements_requirements: [FR-8, NFR-4]
 relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-10, FCT-11, FCT-22]
 relies_on_assumptions: [ASM-1, ASM-3, ASM-5, ASM-6, ASM-8, ASM-15]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # Web GUI Column View File Browser
@@ -149,6 +149,7 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
   - Path traversal attempts containing `..` segments MUST NOT escape above the storage root.
   - If `path` does not exist or points to a non-directory, MUST return `404 Not Found` with JSON error envelope `{"error": "directory not found"}`.
   - Returns `200 OK` with JSON envelope adhering to `FsLsResponse` schema below. Entries MUST be sorted case-insensitively by name with ties broken by byte order.
+  - A path that leaves the storage root through a symbolic link answers `404 {"error": "directory not found"}`. If the directory exists but cannot be read, the endpoint answers `500` with `{"error": "cannot read directory: <reason>"}`. An `all` value that is not a boolean is treated as `false`.
 
 #### `GET /api/fs/download`
 - **Purpose:** Download a file from the watch to the user's local machine via browser download.
@@ -163,7 +164,8 @@ Provides a macOS Finder-style Column View (Miller Columns) file browser inside t
     - `Content-Type: application/octet-stream` (or matched MIME type for `.xml`, `.txt`).
     - `Content-Disposition: attachment; filename="<basename>"`, where `<basename>` is encoded per RFC 6266 (any `"` or `\` escaped and, for non-ASCII names, a `filename*=UTF-8''<percent-encoded>` parameter added) so that a watch filename can never break or inject into the header.
     - `Content-Length: <size_bytes>`.
-    - `Cache-Control: no-cache`.
+    - `Cache-Control: no-store, no-cache, must-revalidate`, the same value every API endpoint sets ([dashboard.md](dashboard.md)), which includes `no-cache`.
+  - A missing or empty `path` (the storage root) answers `400 {"error": "invalid file path"}`.
   - Streams the file byte contents directly to the HTTP response writer.
 
 ### Request Gate

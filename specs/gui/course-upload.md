@@ -8,7 +8,7 @@ depends_on: [dashboard, course-upload, device-discovery]
 implements_requirements: [FR-9, NFR-4]
 relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17, FCT-22, FCT-23, FCT-24]
 relies_on_assumptions: [ASM-1, ASM-3, ASM-7, ASM-8, ASM-15]
-last_updated: 2026-09-20
+last_updated: 2026-11-07
 ---
 
 # Web GUI Course Upload
@@ -95,14 +95,17 @@ Provides a browser-based drag-and-drop and file-picker interface within the Web 
     `{"error": "no device connected"}`.
   - If the multipart payload is missing or empty, MUST return `400 Bad Request` with JSON:
     `{"error": "missing file payload"}`.
+  - The multipart body is capped at **32 MiB**, the cap shared by every multipart endpoint ([filesystem-manipulation.md](filesystem-manipulation.md) refers to it); a larger body MUST be answered with `413 Content Too Large` and `{"error": "request body too large"}`.
+  - The part's filename is taken exactly as the client sent it and is used only as a final path segment: `.`, `..`, an empty name, or a name containing `/` or `\` MUST be rejected with `400 Bad Request` and `{"error": "invalid file name"}` (the same rule as `POST /api/fs/upload`).
   - If the uploaded file extension is not `.fit` or `.gpx` (case-insensitive), MUST return `400 Bad Request` with JSON:
     `{"error": "invalid file type: must be .fit or .gpx"}`.
+  - The checks above run in this order: device (`503`), payload missing or empty (`400`), file name (`400`), extension (`400`).
   - MUST write the incoming file bytes safely and execute transfer to the watch's `GARMIN/NewFiles` directory (`FR-6`).
   - MUST tolerate directory casing variations (`FCT-8`).
   - If standard POSIX write fails due to GVFS MTP FUSE limitations, MUST fall back to GVFS D-Bus push (`FCT-13`). The destination handed to the fallback MUST be the plain local GVFS path or a fully percent-encoded `mtp://` URI (`FCT-23`), so that an uploaded filename containing `#`, `%`, `?` or a space lands on the watch under exactly that name.
   - MUST overwrite any existing file with the same filename in `NewFiles`.
   - Upon successful transfer, MUST return `200 OK` with JSON envelope adhering to `UploadResponse` schema below.
-  - If device transfer fails (e.g. `NewFiles` missing or disk write error), MUST return `500 Internal Server Error` with JSON error details.
+  - If device transfer fails (e.g. `NewFiles` missing or disk write error), MUST return `500 Internal Server Error` with JSON error details (`{"error": "NewFiles directory not found"}` when the directory is absent, otherwise the tool/OS error text).
 
 ### Post-Upload Feedback
 - Upon receiving a `200 OK` response:

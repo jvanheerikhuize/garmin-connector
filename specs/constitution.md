@@ -1,7 +1,7 @@
 ---
 id: constitution
 title: Constitution
-last_updated: 2026-09-18
+last_updated: 2026-11-08
 ---
 
 # Constitution
@@ -61,6 +61,10 @@ Facts are objective, verifiable truths about the external environment (hardware,
 | **FCT-22** | Web Platform (Browser Security Model) | Any web page open in the user's browser may issue cross-origin requests to loopback addresses (`127.0.0.1`, `localhost`) without a preflight when the request is a "simple" one: any `GET`, or a `POST` whose body is form-encoded, multipart, or `text/plain`. The browser attaches an `Origin` header naming the foreign page but does not block the request, and a server that does not inspect `Origin`, `Host`, or the declared `Content-Type` will act on it exactly as if the request came from its own page. DNS rebinding additionally lets a remote hostname resolve to the loopback address, so a foreign `Host` header can reach a loopback listener. Binding to loopback alone therefore does not isolate an unauthenticated local HTTP API from other web content. | Empirical: cross-origin `POST` with `Origin: https://evil.example` and `Content-Type: text/plain` carrying a JSON body, and a `GET` with a foreign `Host`, were both accepted by a running instance (2026-09-18) | Informs `FR-7`, `FR-9`, `FR-12`, `NFR-4` |
 | **FCT-23** | URI Standard (RFC 3986) / GVFS | In a URI, `#` begins the fragment, `%` begins a percent-escape, and `?` begins the query; spaces and non-ASCII characters are not permitted unencoded in the path. When a watch path is handed to GVFS client tooling as a native `mtp://<host>/<path>` URI, every path segment MUST be percent-encoded or the tooling addresses the wrong object (`ride #2.gpx` is truncated at `#`; `100%.gpx` is an invalid escape). The same tooling also accepts the plain local GVFS mount path (`/run/user/<uid>/gvfs/mtp:host=.../...`), which needs no encoding. | RFC 3986 §2.2/§3.5; probe of the URI conversion on a filename containing `#`, `%` and a space (2026-09-18) | Informs `FR-6`, `FR-9`, `FR-11`, `FR-12` |
 | **FCT-24** | Physical Reality / Filesystem | When a Garmin watch processes a `.gpx` file placed into `GARMIN/NewFiles/` upon USB disconnection, it creates the resulting `.fit` course in `GARMIN/Courses/` named strictly after the internal `<trk><name>` or `<metadata><name>` XML element, ignoring the uploaded file name. Any top-level `<wpt>` elements in the GPX file are parsed into global device Saved Locations in `GARMIN/Location/Lctns.fit` rather than in-course points. | Empirical observation on physical Garmin Venu X1 hardware with Wayforge route GPX import (2026-09-20) | Informs `FR-6`, `FR-9`, `FR-10` |
+| **FCT-25** | Physical Reality / Filesystem | `GarminDevice.xml` declares, under `<MassStorageMode>`, a list of `<DataType>` entries. Each names a kind of data (e.g. `FIT_TYPE_4`, `MEDIA_TRACK`, `IQWatchFaces`, `BACKUP_PRIMARY`) and one or more `<File>` locations giving the folder path relative to the storage root (casing differs between entries, e.g. `Garmin/Activity` and `GARMIN/APPS`), the file extension, and a `TransferDirection` of `OutputFromUnit` (the watch writes it), `InputToUnit` (the watch imports it) or `InputOutput` (both). For a `FIT_TYPE_<n>` entry, `<n>` equals the FIT `file_id` type of the files found in that folder. A declared folder need not exist on the device (e.g. `Garmin/MuscleMap`, `Garmin/POI`), and many existing folders are not declared at all (e.g. `GARMIN/Debug`, `GARMIN/Weather`). | Read from a Venu X1 (software 1915) on 2026-11-08; the `file_id` type of sampled files in 24 declared folders matched their declaration in every case | Informs `FR-13` |
+| **FCT-26** | File Format (Garmin FIT) | A FIT file starts with a 12- or 14-byte header: header size, protocol version, profile version (16-bit little-endian), data size (32-bit little-endian), the ASCII signature `.FIT`, and (14-byte form) a header CRC. Records follow: *definition* messages bind a local message type (0–15) to a global message number, byte order, and field list (field number, size, base type), optionally followed by developer fields; *data* messages carry the field values, introduced by a normal header or a compressed-timestamp header (local type 0–3). A CRC-16 over header and data follows the data. Unsigned/enum values of all-ones bits mean "invalid". Timestamps count seconds since 1989-12-31T00:00:00Z. Global message 0 (`file_id`) carries the file type, manufacturer (1 = Garmin), product, serial number and creation time; message 18 (`session`) carries start time, sport, elapsed time (ms), distance (cm), calories and average/maximum heart rate. Publicly documented file types are 1 device, 2 settings, 3 sport, 4 activity, 5 workout, 6 course, 7 schedules, 9 weight, 10 totals, 11 goals, 14 blood pressure, 15 monitoring A, 20 activity summary, 28 daily monitoring, 32 monitoring B, 34 segment, 35 segment list, 40 extended display configuration; Garmin watches also write undocumented types (e.g. 8, 29, 33, 37, 39, 44, 65, 72, 74, 77, 87). | FIT SDK protocol and profile; every sampled FIT file on a Venu X1 (2026-11-08) decoded completely with a valid CRC | Informs `FR-13` |
+| **FCT-27** | GVFS / OS (Linux) | After a watch is unplugged and plugged in again, GVFS can keep the previous MTP mount under the same `/run/user/<uid>/gvfs/mtp:host=<host>` path although the device session behind it is gone: the mount root lists no entries and paths beneath it fail with an I/O error, while the GVFS daemon logs `PTP I/O Error`. Unmounting and mounting the `mtp://<host>/` location again through GVFS client tooling restores a readable mount within a few seconds. | Observed on a Venu X1, 2026-11-08: `GARMIN` unreadable after a replug, recovered by `gio mount -u` followed by `gio mount` | Informs `FR-1` |
+| **FCT-28** | Physical Reality / USB | After being plugged in, a Venu X1 first enumerates on USB as vendor `091e`, product `0003` ("Garmin GPS (various models)"), with no serial number and a single vendor-specific interface — no MTP interface, so the desktop mounts nothing. After roughly 30–50 seconds it disconnects and re-enumerates by itself as product `51fb` with an MTP interface and its serial number, and GVFS then mounts it. Plugging in again during the MTP phase restarts the sequence. The kernel lists attached USB devices, with their vendor and product IDs, under `/sys/bus/usb/devices/*/idVendor` and `idProduct`. | Observed twice on 2026-11-08 (kernel log: `0003` at 11:23:54 → `51fb` at 11:24:45; `0003` at 11:26:25 → `51fb` at 11:26:59; interface list via `lsusb -v`) | Informs `NFR-1` |
 
 ### 2.2 Assumptions
 Assumptions are beliefs about user behavior, workflows, or integration needs that justify architectural decisions.
@@ -102,6 +106,9 @@ flowchart LR
         FCT_Delete["FCT-21: Non-Atomic MTP Directory Deletion"]
         FCT_Origin["FCT-22: Browser Cross-Origin Requests Reach Loopback"]
         FCT_URI["FCT-23: URI Reserved Characters"]
+        FCT_Decl["FCT-25,26: Data-Type Declarations & FIT Format"]
+        FCT_Stale["FCT-27: Stale GVFS MTP Mount"]
+        FCT_Startup["FCT-28: USB Start-up Phase (no MTP)"]
     end
 
     subgraph Assumptions["Operational Assumptions (User, UX & Design Scope)"]
@@ -124,6 +131,7 @@ flowchart LR
         FR_Dashboard["FR-7: Web GUI Dashboard"]
         FR_Preview["FR-10: Route & Elevation Preview"]
         FR_Mutation["FR-11, FR-12: Filesystem Mutation (CLI & GUI)"]
+        FR_Insight["FR-13: Folder & File Insight"]
         NFR_Origin["NFR-4: Same-Origin Enforcement"]
     end
 
@@ -149,6 +157,11 @@ flowchart LR
     FCT_Origin -->|"informs request gating"| NFR_Origin
     FCT_URI -->|"informs path encoding"| FR_Upload
     FCT_URI -->|"informs path encoding"| FR_Mutation
+    FCT_Decl -->|"informs folder purposes & FIT summaries"| FR_Insight
+    FCT_GPX -->|"informs GPX summary"| FR_Insight
+    FCT_Stale -->|"informs remount recovery"| FR_Discovery
+    FCT_Startup -->|"informs start-up hint"| FR_Status
+    FCT_Startup -->|"informs start-up hint"| FR_Dashboard
 
     %% Relations from Assumptions to Requirements
     ASM_Output -->|"shapes output format"| FR_Status
@@ -163,12 +176,14 @@ flowchart LR
     ASM_Threat -->|"mandates origin checks"| NFR_Origin
     NFR_Origin -->|"gates every API call"| FR_Dashboard
     NFR_Origin -->|"gates every API call"| FR_Mutation
+    NFR_Origin -->|"gates every API call"| FR_Insight
+    ASM_Inspection -->|"bounds bytes read per file"| FR_Insight
 ```
 
 ## 3. Requirements
 
 ### 3.1 Functional Requirements
-- **FR-1: Linux Device Discovery**: Automatically detect connected Garmin watches across Linux mount points and GVFS/MTP paths (e.g., `/run/user/<uid>/gvfs/mtp:*`, `/media`, `/mnt`) without manual mount path configuration. Under GVFS only mounts of the MTP backend (the `mtp:` prefix, `FCT-4`) are candidates; other GVFS backends (network shares, cloud drives) MUST NOT be traversed, so that they can neither slow discovery down nor be mistaken for the watch.
+- **FR-1: Linux Device Discovery**: Automatically detect connected Garmin watches across Linux mount points and GVFS/MTP paths (e.g., `/run/user/<uid>/gvfs/mtp:*`, `/media`, `/mnt`) without manual mount path configuration. Under GVFS only mounts of the MTP backend (the `mtp:` prefix, `FCT-4`) are candidates; other GVFS backends (network shares, cloud drives) MUST NOT be traversed, so that they can neither slow discovery down nor be mistaken for the watch. A GVFS MTP mount that cannot be read (`FCT-27`) MUST be recovered by remounting it — at most once per short interval per device — before discovery concludes that no watch is connected.
 - **FR-2: Device Metadata Extraction**: Read and parse `GarminDevice.xml` (case-insensitive, XML namespaces stripped) to extract identifying metadata with graceful fallbacks on missing or malformed XML.
 - **FR-3: CLI Status Inspection**: Provide a CLI command (`garmin-connector status`) to inspect and report device connection status and metadata to stdout in human-readable text or a machine-readable structured data format.
 - **FR-4: Read-Only Filesystem Inspection**: Provide CLI commands (`ls`, `tree`) to explore the watch's internal filesystem structure and basic metadata without modifying contents.
@@ -180,9 +195,10 @@ flowchart LR
 - **FR-10: Web GUI Course Route & Elevation Preview**: Provide an offline vector route map and elevation profile preview for `.gpx` course files within the web GUI, computing distance, elevation gain/loss, and track geometry for both device courses and staged uploads. `.fit` course files remain uploadable (`FR-6`, `FR-9`) but are out of scope for visual preview — see [gui/course-preview.md](gui/course-preview.md) Non-Goals.
 - **FR-11: Watch Filesystem Manipulation**: Provide CLI commands (`mkdir`, `rm`, `touch`, `put`) to manipulate the watch's internal filesystem (creating directories, removing files/directories, creating empty files, and copying local files onto arbitrary watch paths) relative to the internal storage root with case-insensitive path resolution and fallback mechanisms for MTP mount limitations. Neither the storage root nor the top-level `GARMIN` directory may be removed or overwritten by any surface (CLI or GUI); the safeguard is identical on both.
 - **FR-12: Web GUI Filesystem Manipulation**: Provide interactive filesystem manipulation within the Web GUI file browser (creating new directories, uploading arbitrary files to selected folders, deleting files/folders, and creating empty files) backed by local REST endpoints.
+- **FR-13: Web GUI Folder & File Insight**: In the Web GUI file browser, explain what each folder is for and summarise what a selected file contains, without modifying the watch. Folder purposes come from the watch's own data-type declarations (`FCT-25`) and from a curated catalog in which every entry states how it is known: *documented* (public Garmin/FIT documentation), *observed* (verified from real watch contents), or *inferred* (from the name only, presented to the user as "likely"). File summaries cover FIT files (file type, creator, creation time, integrity check, activity session, message counts; `FCT-26`), GPX files (the names and waypoints that decide how the watch imports them; `FCT-24`), text excerpts, image previews, and a short byte peek for other binary files.
 
 ### 3.2 Non-Functional Requirements
-- **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state for every *inspection* surface (`status`, `info`, `ls`, `tree`, the web dashboard) — it exits `0` / answers `200`, never raises an exception. A *mutation* (`upload`, `mkdir`, `rm`, `touch`, `put`, or their GUI equivalents) requested while no watch is connected is a request that could not be honoured and MUST be reported as a failure (exit `1` / `503`), so that scripts do not mistake a no-op for success. Unexpected disconnects or missing metadata must not cause unhandled crashes in either case.
+- **NFR-1: Fault Tolerance**: Absence of a connected watch is a valid state for every *inspection* surface (`status`, `info`, `ls`, `tree`, the web dashboard) — it exits `0` / answers `200`, never raises an exception. A *mutation* (`upload`, `mkdir`, `rm`, `touch`, `put`, or their GUI equivalents) requested while no watch is connected is a request that could not be honoured and MUST be reported as a failure (exit `1` / `503`), so that scripts do not mistake a no-op for success. Unexpected disconnects or missing metadata must not cause unhandled crashes in either case. When no watch is found but a Garmin device is attached over USB — typically still in its start-up phase (`FCT-28`) — the inspection surfaces SHOULD say so instead of only reporting "no device", without changing their exit codes or their machine-readable output contract.
 - **NFR-2: Standalone Execution**: Low CPU and memory overhead. The tool must be executable by the end-user without requiring them to pre-install language runtimes, package managers, or third-party libraries.
 - **NFR-3: Exclusive Dependencies**: All dependencies must be strictly exclusive to this repository and its chosen implementation.
 - **NFR-4: Same-Origin Enforcement**: The local web server MUST act only on requests that originate from the page it serves itself (`ASM-15`, `FCT-22`). At minimum it MUST (a) reject any request whose `Host` header does not name the address it is bound to, (b) reject any state-changing request (anything other than `GET`/`HEAD`/`OPTIONS`) that carries an `Origin` or `Referer` naming a different origin, and (c) reject any state-changing request whose declared `Content-Type` is not the one the endpoint defines, so that a browser-issued "simple" cross-origin request can never reach a mutation. Rejections MUST be reported with `403 Forbidden` and MUST happen before device discovery or any body parsing. Binding to a non-loopback address (`--host`) does not relax this rule and MUST print a warning that the API is reachable from the network without authentication.
@@ -196,6 +212,8 @@ flowchart LR
     Web --> Detector
     Detector --> Watch["Garmin Watch (GarminDevice.xml & Filesystem)"]
     CourseParser --> Watch
+    Web --> Inspector["Content Inspector (folder purposes, FIT/GPX/text summaries)"]
+    Inspector --> Watch
 ```
 
 ## 5. Out of Scope

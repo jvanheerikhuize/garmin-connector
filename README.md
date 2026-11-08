@@ -4,7 +4,8 @@ Connect a modern Garmin watch to a Linux laptop and exchange files with it over 
 
 ## Features
 
-- **Device discovery.** Finds a connected watch under GVFS MTP mounts (`/run/user/<uid>/gvfs/mtp:*`), `/media` and `/mnt` without any mount configuration. It looks for a `GARMIN` folder up to two levels deep, so `Internal Storage/GARMIN` is found too.
+- **Folder & file insight.** The web file browser explains what each watch folder is for — from the watch's own `GarminDevice.xml` declarations and a curated catalog that says whether each purpose is documented, observed on a real watch, or only likely — and summarises the selected file: FIT type, creator, checksum, activity session (sport, duration, distance, heart rate), course/workout names, GPX names and waypoints (and what the watch will do with them on import), text excerpts and images.
+- **Device discovery.** Finds a connected watch under GVFS MTP mounts (`/run/user/<uid>/gvfs/mtp:*`), `/media` and `/mnt` without any mount configuration. It looks for a `GARMIN` folder up to two levels deep, so `Internal Storage/GARMIN` is found too. If GVFS kept a dead mount after you unplugged and replugged the watch, it remounts it automatically (at most once every 30 s). Right after plugging in, the watch spends about 30–60 seconds in a start-up mode without file access; `status` and the dashboard say so instead of just "no device".
 - **Status and diagnostics.** Model, unit ID, software version, part number, storage capacity, sub-component firmware (GPS, wireless, sensor hub) and installed Connect IQ apps, all read from `GARMIN/GarminDevice.xml`.
 - **Read-only browsing.** `ls` and `tree`, with case-insensitive paths and depth-limited traversal so slow MTP mounts stay responsive.
 - **Filesystem manipulation.** `mkdir`, `rm`, `touch` and `put` work anywhere on the watch. When the MTP mount rejects a direct write, they fall back to the GVFS client tool (`gio`).

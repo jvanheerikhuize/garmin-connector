@@ -6,7 +6,7 @@ status: implemented
 owners: [jerry]
 depends_on: []
 implements_requirements: [FR-1, FR-2]
-relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6, FCT-7, FCT-8, FCT-9, FCT-13, FCT-18, FCT-20, FCT-27]
+relies_on_facts: [FCT-1, FCT-2, FCT-3, FCT-4, FCT-5, FCT-6, FCT-7, FCT-8, FCT-9, FCT-13, FCT-18, FCT-20, FCT-27, FCT-28]
 relies_on_assumptions: [ASM-3, ASM-4, ASM-13]
 last_updated: 2026-11-08
 ---
@@ -19,7 +19,7 @@ last_updated: 2026-11-08
 ## Constitution Alignment
 
 - **Implements Requirements:** `FR-1` (Linux Device Discovery), `FR-2` (Device Metadata Extraction)
-- **Relies on Facts:** `FCT-3` (GARMIN structure), `FCT-4` (GVFS paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-7` (Mount fragmentation), `FCT-8` (MTP Casing), `FCT-9` (Multi-user EACCES), `FCT-13`/`FCT-20` (GVFS client tooling and its module directory), `FCT-18` (mount-enumeration APIs unreliable; scan paths directly), `FCT-27` (stale MTP mount after a replug)
+- **Relies on Facts:** `FCT-3` (GARMIN structure), `FCT-4` (GVFS paths), `FCT-5` (XML fields), `FCT-6` (XML namespaces), `FCT-7` (Mount fragmentation), `FCT-8` (MTP Casing), `FCT-9` (Multi-user EACCES), `FCT-13`/`FCT-20` (GVFS client tooling and its module directory), `FCT-18` (mount-enumeration APIs unreliable; scan paths directly), `FCT-27` (stale MTP mount after a replug), `FCT-28` (USB start-up phase)
 - **Relies on Assumptions:** `ASM-3` (Single device workflow), `ASM-4` (Graceful metadata fallback), `ASM-13` (GVFS client tooling installed)
 
 ## Purpose
@@ -66,6 +66,13 @@ Responsible for scanning the local Linux filesystem for MTP mounts that look lik
 - Recovery MUST be attempted at most once per 30 seconds per `<host>` within one process, so that a dashboard polling a genuinely broken device does not remount it on every request. Concurrent discoveries MUST NOT start more than one recovery for the same host.
 - Recovery never makes discovery fail: any error simply means "no device from this candidate".
 - Tests MUST exercise recovery with a stand-in for the GVFS client tool (a stale empty `mtp:host=X` directory that the stand-in populates on `mount`), and MUST check the exact unmount/mount calls, the throttle, and that a readable non-Garmin MTP device is left alone.
+
+### Garmin USB presence (NFR-1, FCT-28)
+- When discovery finds no watch, callers MAY ask whether a Garmin device is attached over USB anyway, to explain the absence. The check reads the kernel's USB device list (`/sys/bus/usb/devices/*/idVendor` and `idProduct`, values trimmed and lower-cased) and returns:
+  - `starting` if any device has vendor `091e` and product `0003` (the start-up phase), with the message `A Garmin watch is on USB but is still starting its file-transfer mode. This usually takes 30–60 seconds; it will appear automatically.`;
+  - otherwise `not_mounted` if any device has vendor `091e`, with the message `A Garmin watch is on USB but the desktop has not mounted it yet. Wait a few seconds, unlock the watch, or unplug and replug it.`;
+  - otherwise nothing. An unreadable device list also yields nothing; the check never fails.
+- The check MUST NOT change the discovery result; it only explains a "none". Tests MUST point it at a fake device list so they do not depend on the USB devices of the machine running them.
 
 ### Metadata Extraction (FR-2, FCT-2, FCT-3, FCT-5, FCT-6)
 - Once a `GARMIN` directory is found, MUST read the `GarminDevice.xml` file located directly inside it (case-insensitive filename match, e.g. `garmindevice.XML`).

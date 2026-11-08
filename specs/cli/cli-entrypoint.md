@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [device-discovery]
 implements_requirements: [FR-3, NFR-1]
-relies_on_facts: []
+relies_on_facts: [FCT-28]
 relies_on_assumptions: [ASM-1, ASM-2]
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 ---
 
 # CLI Entrypoint and Status Command
@@ -67,6 +67,7 @@ The single process entrypoint (`garmin-connector`) that a user invokes. It handl
 - If `--json` is `false` (default):
   - MUST output a human-readable text summary to `stdout` consisting of a headline `Device found: <model> (ID: <id>)` followed by indented lines for `Software version`, `Part number` and `Mount path`. Empty metadata values are rendered as `-`.
   - MUST output "No Garmin device detected." if no device is found.
+  - When no device is found and the Garmin USB presence check of [device-discovery.md](../core/device-discovery.md) reports a state, `status`, `info`, `ls` and `tree` MUST additionally print `Hint: <message>` on its own line to `stderr` (human mode only). `stdout`, the `--json` output and the exit code are unchanged (`NFR-1`, `FCT-28`).
 
 ### Exit Codes (all subcommands)
 | Code | Meaning |

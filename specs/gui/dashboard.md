@@ -6,9 +6,9 @@ status: implemented
 owners: [jerry]
 depends_on: [cli-entrypoint, device-discovery, device-info]
 implements_requirements: [FR-7, NFR-4]
-relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6, FCT-16, FCT-22]
+relies_on_facts: [FCT-2, FCT-4, FCT-5, FCT-6, FCT-16, FCT-22, FCT-28]
 relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-4, ASM-8, ASM-11, ASM-15]
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 ---
 
 # Web GUI Dashboard
@@ -102,6 +102,7 @@ The gate runs before routing, before device discovery, and before any request bo
 - **Initial Load:** Upon page load, the frontend script MUST issue a request to `GET /api/info` and render the retrieved state.
 - **Disconnected State:**
   - When `connected: false`, the dashboard MUST display a clear "No Garmin Device Detected" banner with guidance to connect the watch via USB.
+  - When the response also carries `usb` (`FCT-28`), the banner (on every view that shows it) MUST instead read `Watch Is Starting Up` (state `starting`) or `Watch Not Mounted Yet` (state `not_mounted`), with a spinner, the `usb.message` text, and a distinct (amber) style. Auto-refresh clears it once the watch is mounted.
   - When disconnected, detail sections (Storage, Components, Connect IQ) MUST display a dormant/inactive state rather than rendering broken or `NaN` values.
 - **Connected State:**
   - When `connected: true`, the header MUST display an active "Connected" indicator alongside the device model name (e.g., `Venu X1`).
@@ -130,6 +131,9 @@ WebFlags:
 ```yaml
 StatusResponse:
   connected: boolean
+  usb:                     # Only when connected == false and a Garmin device is on USB (FCT-28); otherwise omitted
+    state: string          # "starting" | "not_mounted"
+    message: string        # Text per core/device-discovery.md
   device:
     model: string
     id: string
@@ -140,6 +144,7 @@ StatusResponse:
 
 InfoResponse:
   connected: boolean
+  usb: object             # Same as StatusResponse.usb
   device:
     model: string
     id: string

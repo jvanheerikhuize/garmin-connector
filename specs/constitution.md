@@ -168,7 +168,7 @@ flowchart LR
 ## 3. Requirements
 
 ### 3.1 Functional Requirements
-- **FR-1: Linux Device Discovery**: Automatically detect connected Garmin watches across Linux mount points and GVFS/MTP paths (e.g., `/run/user/<uid>/gvfs`, `/media`, `/mnt`) without manual mount path configuration.
+- **FR-1: Linux Device Discovery**: Automatically detect connected Garmin watches across Linux mount points and GVFS/MTP paths (e.g., `/run/user/<uid>/gvfs/mtp:*`, `/media`, `/mnt`) without manual mount path configuration. Under GVFS only mounts of the MTP backend (the `mtp:` prefix, `FCT-4`) are candidates; other GVFS backends (network shares, cloud drives) MUST NOT be traversed, so that they can neither slow discovery down nor be mistaken for the watch.
 - **FR-2: Device Metadata Extraction**: Read and parse `GarminDevice.xml` (case-insensitive, XML namespaces stripped) to extract identifying metadata with graceful fallbacks on missing or malformed XML.
 - **FR-3: CLI Status Inspection**: Provide a CLI command (`garmin-connector status`) to inspect and report device connection status and metadata to stdout in human-readable text or a machine-readable structured data format.
 - **FR-4: Read-Only Filesystem Inspection**: Provide CLI commands (`ls`, `tree`) to explore the watch's internal filesystem structure and basic metadata without modifying contents.

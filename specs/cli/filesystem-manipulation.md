@@ -8,7 +8,7 @@ depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-11]
 relies_on_facts: [FCT-3, FCT-4, FCT-8, FCT-11, FCT-13, FCT-15, FCT-19, FCT-20, FCT-21, FCT-23]
 relies_on_assumptions: [ASM-1, ASM-2, ASM-3, ASM-12, ASM-14]
-last_updated: 2026-09-18
+last_updated: 2026-11-07
 ---
 
 # Filesystem Manipulation (`mkdir`, `rm`, `touch`, `put`)
@@ -60,6 +60,8 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - **Safety Protection**: Commands MUST NOT allow deleting, removing, or overwriting the storage root itself (`/`, `.`, or empty path `""`), nor the top-level `GARMIN` directory (any casing, with or without a leading slash — i.e. a path that normalizes to the single segment `GARMIN`). An attempt to do so MUST output `garmin-connector <cmd>: cannot remove '<path>': cannot remove root or system directory` to `stderr` and exit `1`. This is deliberately identical to the Web GUI safeguard in [gui/filesystem-manipulation.md](../gui/filesystem-manipulation.md) so the two surfaces never diverge (`FR-11`). Deleting *inside* `GARMIN` (e.g. `rm -r GARMIN/Activity`) remains permitted.
 - **GVFS / MTP Fallback**: File and directory mutations MUST attempt direct filesystem operations first. If the underlying mount returns `EOPNOTSUPP` or an unsupported operation error (`FCT-13`, `FCT-19`), the command MUST attempt execution via GVFS client tooling (such as `gio mkdir`, `gio remove`, `gio copy`) ensuring valid host module paths (`FCT-20`). The target MUST be handed to that tooling either as the plain local GVFS mount path or as a fully percent-encoded `mtp://` URI (`FCT-23`); a watch path containing `#`, `%`, `?`, a space, or a non-ASCII character MUST resolve to exactly that item. The local-path form SHOULD be preferred because it needs no encoding. For non-empty directories, deletion MUST proceed bottom-up (`FCT-21`, `ASM-14`). If the operation cannot be completed, the error MUST be written to `stderr` and exit `1`.
 - **Argument Validation**: Omission of required positional arguments or unrecognized flags MUST exit with code `2` (usage error) and print usage instructions to `stderr`. A `--` token MUST end flag parsing so that a watch path beginning with `-` can be addressed (e.g. `rm -- -notes.txt`).
+- **Check Order**: usage validation (exit `2`) first, then the device check (exit `1`, `no Garmin device detected`), then validation of any local file (`put`), then the operation itself. A command run with no watch attached therefore always reports `no Garmin device detected`, whatever its other arguments.
+- **Failure Output**: every failure is one line on `stderr` of the form `garmin-connector <cmd>: cannot <verb> '<path>': <reason>`, where `<path>` is the argument as typed and `<verb>` is `create directory` (`mkdir`), `remove` (`rm`), `touch` (`touch`), `copy to` (`put` destination) or `read` (`put` local file). `<reason>` is `No such file or directory`, `File exists`, `Is a directory`, `cannot remove root or system directory`, or the underlying tool/OS error text. With `--json`, failures are still reported only this way: nothing is written to `stdout` and `success: false` is never emitted.
 
 ### Sub-behavior A: Directory Creation (`mkdir` command)
 
@@ -81,7 +83,7 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - Without `-f`/`--force`:
   - If `<watch-path>` does not exist, MUST print `garmin-connector rm: cannot remove '<path>': No such file or directory` to `stderr`, and MUST exit `1`.
 - With `-f`/`--force`:
-  - If `<watch-path>` does not exist, MUST exit `0`.
+  - If `<watch-path>` does not exist, MUST exit `0`. In text mode nothing is printed; with `--json` a success response is printed whose `message` is `Nothing to remove: '<path>' does not exist`.
 - MUST accept an optional `--json` flag to return structured output to `stdout`.
 - Default text output MUST confirm deletion to `stdout` (e.g., `Removed 'GARMIN/NewFiles/old_route.gpx'`).
 
@@ -94,7 +96,8 @@ Provides CLI commands to manipulate files and directories on a connected Garmin 
 - If `<watch-path>` already exists:
   - MUST succeed and update modification timestamp if supported by the mount.
 - MUST accept an optional `--json` flag to return structured output to `stdout`.
-- Default text output MUST confirm the operation to `stdout` (e.g., `Created file 'GARMIN/marker.txt'`).
+- Default text output MUST confirm the operation to `stdout` (e.g., `Created file 'GARMIN/marker.txt'`, or `Touched 'GARMIN/marker.txt'` when the file already existed).
+- A path that normalizes to the storage root is a directory and fails with `Is a directory`.
 
 ### Sub-behavior D: File Copy / Transfer (`put` command)
 

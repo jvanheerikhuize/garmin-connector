@@ -8,7 +8,7 @@ depends_on: [cli-entrypoint, device-discovery]
 implements_requirements: [FR-6]
 relies_on_facts: [FCT-8, FCT-12, FCT-13, FCT-15, FCT-17, FCT-23, FCT-24]
 relies_on_assumptions: [ASM-7]
-last_updated: 2026-09-20
+last_updated: 2026-11-07
 ---
 
 # Course Upload (`upload`)
@@ -58,9 +58,13 @@ The course upload capability allows users to transfer route and course files (su
 - MUST overwrite any existing file in the `NewFiles` directory that has the exact same name.
 - When the copy falls back to GVFS client tooling (`FCT-13`, `FCT-15`), the destination MUST be handed over as the plain local GVFS mount path or as a fully percent-encoded `mtp://` URI (`FCT-23`), so that a local filename containing `#`, `%`, `?` or a space (e.g. `ride #2.gpx`) arrives on the watch under exactly that name rather than being truncated or rejected.
 
+### Check Order & Exit Codes
+- A missing `<file_path>` or more than one positional argument is a usage error (exit `2`, usage on stderr), per [cli-entrypoint](cli-entrypoint.md).
+- Checks then run in this order, each failing with exit `1`: (1) a watch is connected — otherwise `garmin-connector upload: no Garmin device detected`, identical to the filesystem-manipulation commands; (2) the local file exists, is a regular file and is readable; (3) the extension is `.fit` or `.gpx`; (4) `GARMIN/NewFiles` exists; (5) the transfer succeeds.
+
 ### Feedback
-- MUST output a success message to `stdout` upon completion.
-- MUST output any failure reasons (e.g., "Device not found", "Local file unreadable", "NewFiles directory not found") to `stderr`.
+- MUST output a success message to `stdout` upon completion: `Uploaded '<basename>' to <destination-path> (<N> bytes). The watch processes it when disconnected from USB.`
+- MUST output any failure reasons (e.g., "Device not found", "Local file unreadable", "NewFiles directory not found") to `stderr`, prefixed `garmin-connector upload: `.
 
 ## Data Shapes / Interfaces
 

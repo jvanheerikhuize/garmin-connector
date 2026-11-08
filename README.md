@@ -1,28 +1,34 @@
 # garmin-connector
 
-A tool to connect a modern Garmin watch to a Linux laptop and exchange files over USB (MTP) — from the command line or a local web dashboard.
+Connect a modern Garmin watch to a Linux laptop and exchange files with it over USB (MTP), either from the command line or from a local web dashboard.
 
 ## Features
 
-- **Device discovery** — automatically finds a connected Garmin watch across `/run/user/<uid>/gvfs`, `/media`, and `/mnt`, without manual mount configuration.
-- **Status & diagnostics** — connection status, storage capacity, installed Connect IQ apps, and sub-component firmware versions.
-- **Read-only filesystem browser** — `ls` and `tree` for exploring the watch's internal storage from the CLI.
-- **Filesystem manipulation** — `mkdir`, `rm`, `touch`, and `put` for creating, deleting, and copying files anywhere on the watch, with fallbacks for MTP mount limitations.
-- **Course upload** — transfer `.fit`/`.gpx` route files to the watch's `GARMIN/NewFiles/` directory.
-- **Web GUI** — an on-demand local dashboard with a Finder-style column-view file browser, drag-and-drop course upload, and an offline vector route/elevation preview.
+- **Device discovery.** Finds a connected watch under GVFS MTP mounts (`/run/user/<uid>/gvfs/mtp:*`), `/media` and `/mnt` without any mount configuration. It looks for a `GARMIN` folder up to two levels deep, so `Internal Storage/GARMIN` is found too.
+- **Status and diagnostics.** Model, unit ID, software version, part number, storage capacity, sub-component firmware (GPS, wireless, sensor hub) and installed Connect IQ apps, all read from `GARMIN/GarminDevice.xml`.
+- **Read-only browsing.** `ls` and `tree`, with case-insensitive paths and depth-limited traversal so slow MTP mounts stay responsive.
+- **Filesystem manipulation.** `mkdir`, `rm`, `touch` and `put` work anywhere on the watch. When the MTP mount rejects a direct write, they fall back to the GVFS client tool (`gio`).
+- **Course upload.** `upload` copies `.fit` / `.gpx` files into `GARMIN/NewFiles/`, and the watch imports them when you unplug the cable.
+- **Web GUI.** An on-demand local dashboard with:
+  - a Finder-style column file browser (download, delete, new folder or file, drag-and-drop upload)
+  - drag-and-drop course upload
+  - an offline route map and elevation profile for `.gpx` courses
 
-Everything runs on-demand, exits cleanly when no watch is connected, and ships as a single dependency-free binary.
+Every inspection command exits `0` and reports "no device" when no watch is connected. Every mutation exits `1` in that case, so scripts never mistake a no-op for success. The tool ships as a single binary with no runtime dependencies.
 
-## Install
+## Requirements
 
-> **Note:** this repository publishes the *specification* of the tool. The implementation under `cmd/` and `internal/` is a generated artifact of [`specs/`](specs/) and is intentionally not tracked in version control (see [`specs/README.md`](specs/README.md) and [`specs/workflows/regeneration.md`](specs/workflows/regeneration.md)). To obtain runnable code, regenerate it from the specs following that workflow; the build commands below apply once the generated tree is present.
+- Linux, with the watch mounted over MTP by your desktop (GVFS). Other volume managers mounting under `/media` or `/mnt` also work.
+- To write to MTP mounts: the GLib/GIO client tool `gio` and the GVFS MTP backend (`gvfsd-mtp`). Both ship with standard GNOME-based desktops.
+- To build: Go 1.22 or newer. There are no third-party dependencies.
 
-Requires Go 1.22+.
+## Build and install
+
+> This repository is spec-driven. [`specs/`](specs/) is the source of truth, and the code under `cmd/` and `internal/` is generated from it (see [`specs/workflows/regeneration.md`](specs/workflows/regeneration.md)). Regenerate the code before building if it is not present.
 
 ```sh
-go build -o garmin-connector ./cmd/garmin-connector
-# or
-go install ./cmd/garmin-connector
+go build -o garmin-connector ./cmd/garmin-connector   # build
+go install ./cmd/garmin-connector                     # install for the current user
 ```
 
 ## Usage
@@ -43,134 +49,77 @@ Commands:
   put      Copy a local file to the watch
 ```
 
-### Examples
+Every command accepts `-h`/`--help`. Flags may come before or after the arguments, and `--` ends flag parsing, e.g. `rm -- -notes.txt`. `garmin-connector --version` prints `1.0.0`.
+
+### Inspecting the watch
 
 ```sh
-garmin-connector status                 # human-readable connection status
-garmin-connector status --json          # machine-readable status
-garmin-connector info --json            # storage, Connect IQ apps, firmware versions
-garmin-connector ls GARMIN/Activity      # list a directory
-garmin-connector tree --depth 2          # recursive listing
-garmin-connector upload route.gpx        # copy a course to GARMIN/NewFiles/
-garmin-connector mkdir GARMIN/Custom     # create a directory on the watch
-garmin-connector put notes.txt GARMIN/   # copy an arbitrary file onto the watch
-garmin-connector rm -r GARMIN/Custom     # delete recursively (no undo)
-garmin-connector web                     # launch the dashboard at http://127.0.0.1:8080/
+garmin-connector status                 # human-readable connection summary
+garmin-connector status --json          # {"connected": true, "device": {...}}
+garmin-connector info                   # storage, firmware components, Connect IQ apps
+garmin-connector info --json
+garmin-connector ls                     # storage root (the folder that contains GARMIN)
+garmin-connector ls garmin/activity -a  # case-insensitive; -a shows dot-files
+garmin-connector tree GARMIN --depth 2  # default depth is 3
+garmin-connector tree --json
 ```
 
-Inspection commands (`status`, `info`, `ls`, `tree`) exit `0` when no watch is connected — a disconnected watch is a valid state, not an error. Mutating commands (`upload`, `mkdir`, `rm`, `touch`, `put`) exit `1` in that case, so a script never mistakes a skipped mutation for success. Every command supports `--help`.
+Watch paths are relative to the storage root. A leading `/` is allowed. `..` can never climb above the root.
 
-## Web GUI
+### Uploading courses
 
-`garmin-connector web` starts a local HTTP server (default `127.0.0.1:8080`) and opens it in your default browser. It provides:
+```sh
+garmin-connector upload ~/Downloads/alpine-loop.gpx
+```
 
-- A **Dashboard** with live connection status, storage gauge, firmware versions, and Connect IQ inventory (auto-refreshing).
-- A **File Browser** with macOS Finder-style Miller columns, keyboard navigation, and file download.
-- An **Upload Course** view with drag-and-drop, extension validation, and an offline route/elevation preview before transfer.
+The file lands in `GARMIN/NewFiles/` under its original name, replacing any file with the same name. The watch converts it into a course after you disconnect USB. For `.gpx` files, the watch names the course after the `<name>` element inside the file, not after the file name. Top-level `<wpt>` waypoints become saved locations.
 
-All frontend assets are embedded in the binary; nothing is fetched from the network.
+### Changing files
 
-The server only honours requests from the page it serves itself: a foreign `Host` or `Origin` header is refused, so other websites open in the same browser cannot reach the API. There is no login — if you pass `--host` to bind a non-loopback address, the API becomes reachable from your network without authentication, and the command warns you.
+```sh
+garmin-connector mkdir -p GARMIN/Custom/Plans
+garmin-connector touch GARMIN/Custom/marker.txt
+garmin-connector put workout.fit GARMIN/Workouts          # into a folder, keeping the name
+garmin-connector put local.fit GARMIN/Workouts/renamed.fit
+garmin-connector rm GARMIN/NewFiles/old_route.gpx
+garmin-connector rm -r GARMIN/Custom                       # directories need -r
+garmin-connector rm -f GARMIN/maybe-missing.txt            # no error if missing
+```
+
+All four commands accept `--json`. Changes are immediate: there is no trash and no undo. Neither the storage root nor the top-level `GARMIN` folder can be removed.
+
+### Web GUI
+
+```sh
+garmin-connector web                    # serves http://127.0.0.1:8080/ and opens your browser
+garmin-connector web --port 9000 --no-browser
+```
+
+The page has three tabs:
+
+- **Dashboard:** live status, polled every 5 seconds.
+- **File Browser:** arrow keys and Enter navigate. Selecting a file shows its details, a text preview for small text or XML files, and a route preview for `.gpx`.
+- **Upload Course:** drag-and-drop course upload.
+
+Press Ctrl+C to stop the server.
+
+The server binds to loopback by default. It only acts on requests from its own page: requests with a foreign `Host` or `Origin` are refused with `403`, and state-changing requests with an unexpected `Content-Type` are refused with `415`. This means other websites open in the same browser cannot reach the watch. `--host` can bind to another address, but the API has no authentication, and the tool prints a warning when you do this.
+
+## Troubleshooting
+
+- **`no Garmin device detected`:** unlock the watch and check that your file manager shows it. Discovery only needs a readable `GARMIN` folder on a mounted volume.
+- **Writes fail with "Operation not supported":** GVFS MTP mounts do not accept direct file creation, so the tool falls back to `gio copy` / `gio mkdir` / `gio remove`. Sandboxed launchers (snap, flatpak) often export a broken `GIO_MODULE_DIR`. The tool detects this and points `gio` at the host module directory (for example `/usr/lib/x86_64-linux-gnu/gio/modules`). If writes still fail, check that `gio` and the GVFS MTP backend are installed.
+- **Deleting large folders is slow:** MTP cannot delete a non-empty folder in one step, so every file is removed first.
 
 ## Development
 
 ```sh
-go build ./...     # build
-go test ./...       # run tests
-go vet ./...        # static checks
-gofmt -l .           # formatting check (should print nothing)
+go test ./...                 # unit tests
+go vet ./... && gofmt -l .    # static checks; gofmt must print nothing
 ```
 
-## Design
-
-This repository is developed spec-first: behavior lives under [`specs/`](specs/) and the code in `cmd/`/`internal/` is a generated, derived artifact of those specs. See [`specs/README.md`](specs/README.md) for the working agreement and [`specs/constitution.md`](specs/constitution.md) for the system's purpose, grounding facts/assumptions, and requirements.
-
-## Assumptions Needing Verification (Help Promote Them to Facts!)
-
-In this spec-driven project, system behavior is grounded in **External Facts** (empirically verified hardware, OS, and protocol truths) and **Assumptions** (design choices or observations awaiting broader verification).
-
-We welcome testing across different **Garmin models** (Fenix, Forerunner, Edge, Instinct, Epix, Venu) and **Linux distributions** (Ubuntu, Fedora, Arch, Debian, openSUSE, minimal WMs) to verify these assumptions and promote them into permanent facts in the [Constitution](specs/constitution.md).
-
-### 1. `ASM-13`: GVFS Tooling & Backend Availability Across Linux Distributions
-- **Current Assumption:** Linux desktop systems mounting Garmin watches over MTP have GLib/GIO CLI tooling (`gio`) and the `gvfsd-mtp` D-Bus daemon installed out-of-the-box.
-- **Open Question:** Does file transfer succeed out-of-the-box on minimal window managers (i3, sway), pure KDE Plasma, or minimal Arch installations, or does it require installing packages like `gvfs-backends`?
-- **Route to Verify:**
-  ```sh
-  # Check if GIO tooling and GVFS backend module exist on your distro:
-  which gio
-  find /usr/lib* -name "libgvfsdbus.so" 2>/dev/null
-
-  # Test transferring a course to the watch:
-  garmin-connector upload /path/to/test.gpx
-  ```
-- **How to Report:** If `gio` is missing or fails, share your distro, desktop environment, and any package installation requirements.
-
-### 2. `ASM-6`: MTP Traversal Latency Across Watch Models & Storage Sizes
-- **Current Assumption:** Restricting recursive traversal depth (default `--depth 3`) keeps commands responsive under 1 second and prevents MTP hanging.
-- **Open Question:** How does traversal time scale on watches with large storage capacities (e.g. 32GB/64GB on Fenix/Forerunner models with worldwide topographic maps)? Does `--depth 3` stay fast, or does it slow down significantly?
-- **Route to Verify:**
-  ```sh
-  time garmin-connector tree --depth 3
-  time garmin-connector tree --depth 5
-  ```
-- **How to Report:** Share your watch model, firmware version, total storage size, and the `time` output.
-
-### 3. `ASM-7`: Watch Handling of Malformed Course Files
-- **Current Assumption:** Restricting uploads by file extension (`.fit`, `.gpx`) is sufficient, and deep file schema validation in the client is unnecessary because Garmin watch firmware safely handles/rejects corrupted files upon USB disconnect.
-- **Open Question:** What does your specific watch model do when an invalid or truncated GPX/FIT file is placed into `GARMIN/NewFiles/`? Does it silently delete it, log an error in `GARMIN/Debug/`, or does it cause a reboot?
-- **Route to Verify:**
-  ```sh
-  # Stage an invalid file:
-  echo "not a valid xml file" > /tmp/corrupt.gpx
-  garmin-connector upload /tmp/corrupt.gpx
-
-  # Disconnect watch from USB safely, wait for watch to return to watchface, then reconnect:
-  garmin-connector ls GARMIN/NewFiles/
-  garmin-connector ls GARMIN/Debug/ 2>/dev/null
-  ```
-- **How to Report:** Note whether the watch processed, discarded, or retained the invalid file, and whether any error log was written.
-
-### 4. `ASM-3`: Multi-Device Connection Behavior
-- **Current Assumption:** Users typically connect only one Garmin device at a time, and surfacing the first detected device mount is sufficient.
-- **Open Question:** If you connect both a Garmin watch and a Garmin bike computer (e.g. Edge), or two watches simultaneously, which device is selected, and does it cause race conditions or mount conflicts?
-- **Route to Verify:**
-  ```sh
-  # Connect two Garmin devices via USB:
-  garmin-connector status --json
-  ls -ld /run/user/$(id -u)/gvfs/mtp* /media/$USER/* 2>/dev/null
-  ```
-- **How to Report:** Share the JSON status output and whether both devices are recognized in your mount directory.
-
-### 5. `ASM-14`: Non-Empty Directory Deletion Performance Over MTP
-- **Current Assumption:** Because MTP lacks atomic directory removal (`FCT-21`), leaf-first recursive item deletion introduces latency but succeeds reliably without timeouts.
-- **Open Question:** On large directories with many nested items (e.g. 20+ files), does sequential deletion take noticeable time or encounter MTP bus timeouts on your device?
-- **Route to Verify:**
-  ```sh
-  # Create a test folder with multiple files on the watch:
-  garmin-connector mkdir test-deletion
-  garmin-connector touch test-deletion/file1.txt
-  garmin-connector touch test-deletion/file2.txt
-  time garmin-connector rm -r test-deletion
-  ```
-- **How to Report:** Share your watch model, number of deleted items, and total deletion time.
-
----
-
-### How to Promote an Assumption to a Fact
-
-When you have tested an assumption on your setup:
-1. Follow the [Validate an Assumption Workflow](specs/workflows/validate-assumption.md).
-2. Open an Issue or Pull Request on GitHub with:
-   - **Hardware**: Watch Model, Firmware Version.
-   - **Environment**: Linux Distribution, Desktop Environment / Window Manager.
-   - **Evidence**: Command outputs, timing benchmarks, or log snippets.
-3. In a PR, move the assumption from the **Assumptions table** to the **External Facts table** (`FCT-X`) in [`specs/constitution.md`](specs/constitution.md), documenting the *Verification Method* and observations. Once reviewed, your findings become permanent constitutional facts!
-
+The behaviour, data contracts and requirements live in [`specs/`](specs/README.md). Change the spec first, then regenerate or update the code.
 
 ## License
 
-This project is licensed under a **Custom Non-Commercial & Evaluation License** — see the [LICENSE](LICENSE) file for details.
-
-- **Free for Testing & Non-Commercial Use:** You are free to test, evaluate, study, develop, and use this tool for personal and non-commercial purposes.
-- **Commercial Use:** Any commercial use, distribution, or integration requires prior written permission from Jerry van Heerikhuize (<jvanheerikhuize@gmail.com>).
-
+Custom Non-Commercial & Evaluation License; see [LICENSE](LICENSE). Commercial use requires permission.

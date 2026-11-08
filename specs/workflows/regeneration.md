@@ -32,7 +32,7 @@ Regenerated files MUST NOT carry `// GENERATED` banners or references to this pr
 ## Order
 
 1. Branch `rewrite/v1` from `main`. First commit: clear the outputs listed above from the working tree (`rm -rf cmd/ internal/ go.mod go.sum; git rm README.md`), so nothing old is left in the working tree to be read. Do **not** read the deleted files from git history (`git show`, `git log -p`, etc.) — that is the one hard rule of this protocol.
-2. Implement the walking skeleton according to the specs in `specs/core/` and the requirements in `constitution.md`. Write automated unit tests as required.
+2. Implement the walking skeleton according to the specs in `specs/core/` (`device-discovery.md`, `content-insight.md`) and the requirements in `constitution.md`. Write automated unit tests as required.
 3. Implement layered feature specs in `specs/cli/` (`file-browser.md`, `device-info.md`, `course-upload.md`) and `specs/gui/` (`dashboard.md`, `file-browser.md`, `course-upload.md`, `course-preview.md`) and their corresponding unit tests.
 4. Regenerate application build configuration based on `tech-stack.md` and generate `README.md`.
 5. Run the full gate (below). Fix until green.
@@ -56,7 +56,10 @@ The spec is expected to be sufficient. When it isn't:
 - `garmin-connector mkdir --help`, `rm --help`, `touch --help` and `put --help` execute without errors; each exits `1` with `no Garmin device detected` on stderr when no watch is attached.
 - `garmin-connector --version` returns `1.0.0`.
 - With `garmin-connector web --no-browser` running, the request gate in [gui/dashboard.md](../gui/dashboard.md) holds: a `POST /api/fs/delete` sent with `Origin: https://evil.example` answers `403`; the same request with no `Origin` header but `Content-Type: text/plain` answers `415`; `GET /api/status` with `Host: attacker.example` answers `403`; and the served page's own requests still succeed.
-- The automated tests for the web layer exercise each `/api/fs/*` endpoint against a temporary fake storage root, not merely the method check.
+- The automated tests for the web layer exercise each `/api/fs/*` endpoint (including `/api/fs/inspect`) against a temporary fake storage root, not merely the method check.
+- The automated tests decode a synthetic FIT file built in the test (header, definition and data messages incl. a compressed-timestamp record and a developer field, valid CRC) and detect a corrupted and a truncated copy; they also check that every folder-catalog entry matches [core/content-insight.md](../core/content-insight.md) rules (inferred entries start with "Likely").
+- The automated tests exercise stale-MTP-mount recovery with a stand-in GVFS client tool, per [core/device-discovery.md](../core/device-discovery.md).
+- With a watch attached: `GET /api/fs/ls?path=GARMIN` carries a non-null `folder` and per-entry `purpose` values and is not measurably slower than before the insight feature (it lists no extra directory); `GET /api/fs/inspect` on a file in `GARMIN/Activity` returns a FIT summary whose `file_type` matches the folder's declared `FIT_TYPE_<n>` and whose `crc_valid` is true.
 - The constitution review below has been performed and its table is in the PR description.
 
 ## Constitution review (part of the gate)

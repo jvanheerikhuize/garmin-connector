@@ -33,6 +33,7 @@ specs/
 │   ├── create-feature-spec.md
 │   └── ...
 ├── core/                          # core specs namespace
+│   ├── content-insight.md         # folder purposes (catalog + watch declarations) and file summaries
 │   └── device-discovery.md
 ├── cli/                           # cli specs namespace
 │   ├── cli-entrypoint.md
@@ -54,4 +55,6 @@ specs/
 
 This corpus was seeded on 2026-09-14 by reverse-engineering the then-existing implementation (its history has since been squashed into the initial-release commit `ac1b7e5`), then restructured the same day into namespaced specs with a shared template. It describes the system **as it currently behaves**, not aspirationally — it is the working baseline for this workflow, not a wishlist. Treat gaps/ambiguities you find while implementing future changes as bugs in the spec to be fixed, not license to guess.
 
-**Pending implementation (2026-09-18):** a security/consistency audit was folded into the corpus ahead of the code. The following are specified but not yet regenerated, and `main`'s generated code does not satisfy them until the next single-shot implementation runs: `NFR-4` request-origin gate ([gui/dashboard.md](gui/dashboard.md)), `FCT-23` percent-encoding of GVFS URIs, the `GARMIN`-root delete guard on the CLI, RFC 6266 encoding of the download filename, symlink containment at the storage root, the `--` end-of-flags token, and JSON body limits. One open question was left in [core/device-discovery.md](core/device-discovery.md).
+**Implemented (2026-11-07, regeneration PR #32):** the 2026-09-18 security/consistency audit, folded into the corpus ahead of the code, is now implemented by the regenerated code: `NFR-4` request-origin gate ([gui/dashboard.md](gui/dashboard.md)), `FCT-23` percent-encoding of GVFS URIs, the `GARMIN`-root delete guard on the CLI, RFC 6266 encoding of the download filename, symlink containment at the storage root, the `--` end-of-flags token, and JSON body limits. One open question remains in [core/device-discovery.md](core/device-discovery.md).
+
+**Added 2026-11-08:** folder & file insight (`FR-13`, [core/content-insight.md](core/content-insight.md)) and stale-MTP-mount recovery (`FCT-27`, [core/device-discovery.md](core/device-discovery.md)). One open question (GPX name precedence on import) is recorded in [core/content-insight.md](core/content-insight.md).
